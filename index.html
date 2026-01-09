@@ -156,79 +156,173 @@ button:hover{ background:#101a33; }
 </div>
 
 <script>
-const PUBLISHED_ID = "2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg";
+/** CONFIG **/
+const PUBLISHED_ID  = "2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg";
+const LEAGUE_GID    = "372981515";
+const AVERAGES_GID  = "505988321";
+const FIXTURES_GID  = "309782021";
 
-const LEAGUE_GID   = "372981515";
-const AVERAGES_GID = "505988321";
-const FIXTURES_GID = "309782021";
-
+/** Helpers **/
 function csvUrl(gid){
   return `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/pub?gid=${gid}&single=true&output=csv`;
 }
 
+// Robust CSV parsing (handles commas inside quotes)
 function parseCSV(text){
-  const rows=[], re=/,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-  text.trim().split("\n").forEach(l=>rows.push(l.split(re).map(c=>c.replace(/^"|"$/g,""))));
-  return rows;
+  const rows = [];
+  let row = [], cur = "", inQuotes = false;
+
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    const next = text[i+1];
+
+    if (c === '"' && inQuotes && next === '"'){ cur += '"'; i++; continue; }
+    if (c === '"'){ inQuotes = !inQuotes; continue; }
+
+    if (c === "," && !inQuotes){ row.push(cur); cur=""; continue; }
+
+    if ((c === "\n" || c === "\r") && !inQuotes){
+      if (cur.length || row.length){ row.push(cur); rows.push(row); }
+      row = []; cur = "";
+      if (c === "\r" && next === "\n") i++;
+      continue;
+    }
+
+    cur += c;
+  }
+  if (cur.length || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(cell => String(cell).trim() !== ""));
+}
+
+function esc(s){
+  return String(s ?? "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  })[m]);
+}
+
+function renderTable(rows, elId){
+  if (!rows || rows.length < 2){
+    document.getElementById(elId).innerHTML = `<div class="muted">No data.</div>`;
+    return;
+  }
+
+  let html = `<table><thead><tr>`;
+  rows[0].forEach(h => html += `<th>${esc(h)}</th>`);
+  html += `</tr></thead><tbody>`;
+
+  rows.slice(1).forEach(r => {
+    html += `<tr>`;
+    rows[0].forEach((_, i) => html += `<td>${esc(r[i] ?? "")}</td>`);
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById(elId).innerHTML = html;
 }
 
 function pill(status){
-  const s=status.toLowerCase();
-  return s.includes("played")
-    ? `<span class="pill played">✅ Game Played</span>`
-    : `<span class="pill tbp">⏳ To Be Played</span>`;
+  const s = String(status || "").toLowerCase();
+  if (s.includes("played")) return `<span class="pill played">✅ Game Played</span>`;
+  return `<span class="pill tbp">⏳ To Be Played</span>`;
 }
 
-function renderTable(rows, id){
-  let h="<table><thead><tr>";
-  rows[0].forEach(c=>h+=`<th>${c}</th>`);
-  h+="</tr></thead><tbody>";
-  rows.slice(1).forEach(r=>{
-    h+="<tr>";
-    r.forEach(c=>h+=`<td>${c}</td>`);
-    h+="</tr>";
-  });
-  h+="</tbody></table>";
-  document.getElementById(id).innerHTML=h;
-}
-
+/**
+ * FIXED Fixtures renderer:
+ * - Works even if your sheet has blank columns (e.g. Match in A, Home in C, Away in D)
+ * - Shows only the selected matchweek
+ * - Played count is per-week, not overall
+ * - Released = Yes on ONE row releases the whole week
+ */
 function renderFixtures(rows){
-  const [hdr,...data]=rows;
-  const m=hdr.indexOf("Match"), h=hdr.indexOf("Home"),
-        a=hdr.indexOf("Away"), s=hdr.indexOf("Status"),
-        r=hdr.indexOf("Released");
+  const headers = rows[0].map(h => String(h || "").trim());
 
-  const weeks=[...new Set(data.filter(x=>x[r]=="Yes").map(x=>x[m]))].sort();
-  const select=document.getElementById("weekSelect");
+  const colExact = (name) => headers.findIndex(h => h.toLowerCase() === name);
+  const colContains = (txt) => headers.findIndex(h => h.toLowerCase().includes(txt));
 
-  select.innerHTML=weeks.map(w=>`<option value="${w}">Match ${w}</option>`).join("");
+  const iMatch   = colExact("match");
+  const iHome    = colExact("home");
+  const iAway    = colExact("away");
+  const iStatus  = colExact("status");
+  const iRelease = colContains("release");
 
-  function show(){
-    const w=select.value;
-    const f=data.filter(x=>x[m]==w);
-    const played=f.filter(x=>x[s].includes("Played")).length;
-    document.getElementById("weekSummary").textContent=`Played: ${played}/${f.length}`;
-
-    let htm=`<table><thead><tr><th>Match</th><th>Home</th><th>Away</th><th>Status</th></tr></thead><tbody>`;
-    f.forEach(x=>{
-      htm+=`<tr><td>${x[m]}</td><td>${x[h]}</td><td>${x[a]}</td><td>${pill(x[s])}</td></tr>`;
-    });
-    htm+="</tbody></table>";
-    document.getElementById("fixtures").innerHTML=htm;
+  if (iMatch === -1 || iHome === -1 || iAway === -1 || iStatus === -1 || iRelease === -1) {
+    document.getElementById("fixtures").innerHTML =
+      `<div class="muted">Fixtures headers not found. Ensure headers include: Match, Home, Away, Status, Released.</div>`;
+    return;
   }
 
-  select.onchange=show;
-  show();
+  const data = rows.slice(1)
+    .filter(r => String(r[iMatch] ?? "").trim() !== "")
+    .map(r => ({
+      match: String(r[iMatch] ?? "").trim(),
+      home:  String(r[iHome] ?? "").trim(),
+      away:  String(r[iAway] ?? "").trim(),
+      status: String(r[iStatus] ?? "").trim(),
+      released: String(r[iRelease] ?? "").trim().toLowerCase()
+    }));
+
+  // ANY row in a week marked "Yes" releases the WHOLE week
+  const releasedWeeks = [...new Set(
+    data.filter(d => ["yes","true","y","1"].includes(d.released)).map(d => d.match)
+  )].sort((a,b) => (Number(a) - Number(b)));
+
+  const select = document.getElementById("weekSelect");
+
+  if (!releasedWeeks.length) {
+    select.innerHTML = `<option value="">No fixtures released</option>`;
+    document.getElementById("weekSummary").textContent = "";
+    document.getElementById("fixtures").innerHTML = `<div class="muted">No fixtures released yet.</div>`;
+    return;
+  }
+
+  select.innerHTML = releasedWeeks.map(w => `<option value="${esc(w)}">Match ${esc(w)}</option>`).join("");
+
+  function draw(){
+    const week = select.value || releasedWeeks[0];
+    const weekRows = data.filter(d => d.match === week);
+
+    const played = weekRows.filter(d => String(d.status).toLowerCase().includes("played")).length;
+    document.getElementById("weekSummary").textContent = `Played: ${played}/${weekRows.length}`;
+
+    let html = `<table><thead><tr>
+      <th>Match</th><th>Home</th><th>Away</th><th>Status</th>
+    </tr></thead><tbody>`;
+
+    weekRows.forEach(r => {
+      html += `<tr>
+        <td>${esc(r.match)}</td>
+        <td>${esc(r.home)}</td>
+        <td>${esc(r.away)}</td>
+        <td>${pill(r.status)}</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    document.getElementById("fixtures").innerHTML = html;
+  }
+
+  select.onchange = draw;
+  draw();
 }
 
-async function load(){
-  renderTable(parseCSV(await fetch(csvUrl(LEAGUE_GID)).then(r=>r.text())),"league");
-  renderTable(parseCSV(await fetch(csvUrl(AVERAGES_GID)).then(r=>r.text())),"averages");
-  renderFixtures(parseCSV(await fetch(csvUrl(FIXTURES_GID)).then(r=>r.text())));
+async function loadAll(){
+  try {
+    const leagueCSV = await fetch(csvUrl(LEAGUE_GID), {cache:"no-store"}).then(r => r.text());
+    renderTable(parseCSV(leagueCSV), "league");
+
+    const avgCSV = await fetch(csvUrl(AVERAGES_GID), {cache:"no-store"}).then(r => r.text());
+    renderTable(parseCSV(avgCSV), "averages");
+
+    const fixCSV = await fetch(csvUrl(FIXTURES_GID), {cache:"no-store"}).then(r => r.text());
+    renderFixtures(parseCSV(fixCSV));
+  } catch (e) {
+    document.getElementById("fixtures").innerHTML =
+      `<div class="muted">Error loading fixtures. Try Refresh. (${esc(e.message)})</div>`;
+  }
 }
 
-document.getElementById("refreshBtn").onclick=load;
-load();
+document.getElementById("refreshBtn").addEventListener("click", loadAll);
+loadAll();
 </script>
 
 </body>
