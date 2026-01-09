@@ -1,146 +1,160 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DDL Scolia League</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDL Scolia League</title>
 
-  <style>
-    :root { color-scheme: dark; }
+<style>
+:root { color-scheme: dark; }
 
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: #0b1220;
-      color: #e5e7eb;
-    }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: radial-gradient(circle at top, #0f1b33, #050914);
+  color: #e5e7eb;
+}
 
-    .wrap {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 22px;
-    }
+.wrap {
+  max-width: 1000px;
+  margin: auto;
+  padding: 26px;
+}
 
-    header {
-      text-align: center;
-      margin-bottom: 26px;
-    }
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
 
-    /* Logo */
-    .logo {
-      display: block;
-      margin: 0 auto 14px;
-      max-width: 180px;
-      width: 100%;
-      height: auto;
-    }
+.logo {
+  max-width: 160px;
+  margin-bottom: 12px;
+}
 
-    h1 {
-      margin: 0 0 6px;
-      font-size: 28px;
-    }
+h1 {
+  margin: 0 0 6px;
+  font-size: 28px;
+}
 
-    .sub {
-      opacity: .8;
-      font-size: 14px;
-    }
+.sub {
+  opacity: .8;
+  font-size: 14px;
+}
 
-    .card {
-      background: #0f172a;
-      border: 1px solid #1f2a44;
-      border-radius: 16px;
-      padding: 14px;
-      margin: 14px 0 22px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-    }
+.section {
+  background: linear-gradient(180deg, #0e1930, #0b1220);
+  border: 1px solid #1f2a44;
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 28px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.4);
+}
 
-    .card h2 {
-      margin: 6px 6px 12px;
-      font-size: 18px;
-    }
+.section h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
 
-    /* iframe styling */
-    .frame {
-      width: 100%;
-      height: 650px;
-      border: 0;
-      border-radius: 12px;
-      background: #0b1220;
-    }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
 
-    @media (max-width: 700px) {
-      .wrap { padding: 14px; }
-      h1 { font-size: 22px; }
-      .logo { max-width: 140px; }
-      .frame { height: 720px; }
-    }
+th, td {
+  padding: 10px 8px;
+  text-align: center;
+}
 
-    .meta {
-      opacity: .75;
-      font-size: 12px;
-      margin: 10px 6px 0;
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
+th {
+  background: #111c36;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: .05em;
+}
 
-    a {
-      color: #93c5fd;
-      text-decoration: none;
-    }
+td {
+  border-bottom: 1px solid #1f2a44;
+}
 
-    a:hover {
-      text-decoration: underline;
-    }
-  </style>
+tbody tr:hover {
+  background: rgba(148,163,184,.08);
+}
+
+td:first-child,
+th:first-child {
+  text-align: left;
+  padding-left: 12px;
+}
+
+tbody tr:nth-child(1) { background: rgba(234,179,8,.18); }
+tbody tr:nth-child(2) { background: rgba(148,163,184,.16); }
+tbody tr:nth-child(3) { background: rgba(217,119,6,.16); }
+
+@media (max-width: 700px) {
+  table { font-size: 12px; }
+  th, td { padding: 8px 5px; }
+  .logo { max-width: 130px; }
+}
+</style>
 </head>
 
 <body>
-  <div class="wrap">
+<div class="wrap">
 
-    <header>
-      <img
-        src="https://i.postimg.cc/wTwzxQT3/DDL.png"
-        alt="Discord Darts Leagues"
-        class="logo"
-      />
-      <h1>DDL Scolia League</h1>
-      <div class="sub">Live standings & player averages (auto-updating)</div>
-    </header>
+<header>
+  <img class="logo" src="https://i.postimg.cc/wTwzxQT3/DDL.png" alt="DDL">
+  <h1>DDL Scolia League</h1>
+  <div class="sub">Live standings & player averages</div>
+</header>
 
-    <section class="card">
-      <h2>🏆 League Table</h2>
-      <iframe
-        class="frame"
-        loading="lazy"
-        src="https://docs.google.com/spreadsheets/d/e/2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg/pubhtml?gid=372981515&single=true&widget=true&headers=false">
-      </iframe>
-      <div class="meta">
-        <div>
-          Source:
-          <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg/pubhtml?gid=372981515&single=true"
-             target="_blank" rel="noopener">Open tab</a>
-        </div>
-      </div>
-    </section>
+<section class="section">
+  <h2>🏆 League Table</h2>
+  <div id="league">Loading…</div>
+</section>
 
-    <section class="card">
-      <h2>🎯 Player Averages</h2>
-      <iframe
-        class="frame"
-        loading="lazy"
-        src="https://docs.google.com/spreadsheets/d/e/2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg/pubhtml?gid=505988321&single=true&widget=true&headers=false">
-      </iframe>
-      <div class="meta">
-        <div>
-          Source:
-          <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg/pubhtml?gid=505988321&single=true"
-             target="_blank" rel="noopener">Open tab</a>
-        </div>
-      </div>
-    </section>
+<section class="section">
+  <h2>🎯 Player Averages</h2>
+  <div id="averages">Loading…</div>
+</section>
 
-  </div>
+</div>
+
+<script>
+const SHEET_ID = "2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg";
+
+const LEAGUE_GID = "372981515";
+const AVERAGES_GID = "505988321";
+
+function csvUrl(gid) {
+  return `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=${gid}&single=true&output=csv`;
+}
+
+function renderTable(csv, container) {
+  const rows = csv.trim().split("\n").map(r => r.split(","));
+  let html = "<table><thead><tr>";
+  rows[0].forEach(h => html += `<th>${h}</th>`);
+  html += "</tr></thead><tbody>";
+
+  rows.slice(1).forEach(r => {
+    html += "<tr>";
+    r.forEach(c => html += `<td>${c}</td>`);
+    html += "</tr>";
+  });
+
+  html += "</tbody></table>";
+  container.innerHTML = html;
+}
+
+fetch(csvUrl(LEAGUE_GID))
+  .then(r => r.text())
+  .then(csv => renderTable(csv, document.getElementById("league")));
+
+fetch(csvUrl(AVERAGES_GID))
+  .then(r => r.text())
+  .then(csv => renderTable(csv, document.getElementById("averages")));
+</script>
+
 </body>
 </html>
