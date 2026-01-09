@@ -4,78 +4,143 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DDL Scolia League</title>
+
   <style>
     :root { color-scheme: dark; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#0b1220; color:#e5e7eb; }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 22px; }
-    header { text-align:center; margin-bottom: 18px; }
-    h1 { margin: 0 0 6px; font-size: 28px; }
-    .sub { opacity:.8; font-size: 14px; }
 
-    .card { background:#0f172a; border: 1px solid #1f2a44; border-radius: 16px; padding: 14px; margin: 14px 0 22px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
-    .card h2 { margin: 6px 6px 12px; font-size: 18px; }
-
-    .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin: 0 6px 10px; }
-    .search { flex: 1; min-width: 220px; display:flex; gap:8px; align-items:center; }
-    input[type="search"]{
-      width:100%; padding:10px 12px; border-radius: 12px; border:1px solid #263554; background:#0b1220; color:#e5e7eb;
-      outline:none;
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #0b1220;
+      color: #e5e7eb;
     }
-    .btn {
-      padding:10px 12px; border-radius: 12px; border:1px solid #263554; background:#0b1220; color:#e5e7eb;
-      cursor:pointer; white-space:nowrap;
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 22px;
     }
-    .btn:hover { background:#101a33; }
 
-    .card table { width:100% !important; border-collapse: collapse !important; }
-    .card th, .card td { padding: 10px 10px !important; text-align: center !important; border-bottom: 1px solid #1f2a44 !important; }
-    .card th { background:#111c36 !important; position: sticky; top: 0; z-index: 1; }
-    .card tr:hover td { background:#0b1220 !important; }
+    header {
+      text-align: center;
+      margin-bottom: 26px;
+    }
 
-    @media (max-width: 700px){
+    /* Logo */
+    .logo {
+      display: block;
+      margin: 0 auto 14px;
+      max-width: 180px;
+      width: 100%;
+      height: auto;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+    }
+
+    .sub {
+      opacity: .8;
+      font-size: 14px;
+    }
+
+    .card {
+      background: #0f172a;
+      border: 1px solid #1f2a44;
+      border-radius: 16px;
+      padding: 14px;
+      margin: 14px 0 22px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+
+    .card h2 {
+      margin: 6px 6px 12px;
+      font-size: 18px;
+    }
+
+    /* iframe styling */
+    .frame {
+      width: 100%;
+      height: 650px;
+      border: 0;
+      border-radius: 12px;
+      background: #0b1220;
+    }
+
+    @media (max-width: 700px) {
       .wrap { padding: 14px; }
       h1 { font-size: 22px; }
-      .card th, .card td { padding: 8px 6px !important; font-size: 13px !important; }
+      .logo { max-width: 140px; }
+      .frame { height: 720px; }
     }
 
-    .meta { opacity:.75; font-size: 12px; margin: 8px 6px 0; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
-    a { color:#93c5fd; text-decoration:none; }
-    a:hover { text-decoration:underline; }
+    .meta {
+      opacity: .75;
+      font-size: 12px;
+      margin: 10px 6px 0;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
+
     <header>
+      <img
+        src="https://i.postimg.cc/wTwzxQT3/DDL.png"
+        alt="Discord Darts Leagues"
+        class="logo"
+      />
       <h1>DDL Scolia League</h1>
       <div class="sub">Live standings & player averages (auto-updating)</div>
     </header>
 
     <section class="card">
       <h2>🏆 League Table</h2>
-      <div id="league">Loading…</div>
+      <iframe
+        class="frame"
+        loading="lazy"
+        src="https://docs.google.com/spreadsheets/d/e/2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg/pubhtml?gid=372981515&single=true&widget=true&headers=false">
+      </iframe>
+      <div class="meta">
+        <div>
+          Source:
+          <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg/pubhtml?gid=372981515&single=true"
+             target="_blank" rel="noopener">Open tab</a>
+        </div>
+      </div>
     </section>
 
     <section class="card">
       <h2>🎯 Player Averages</h2>
-      <div id="averages">Loading…</div>
+      <iframe
+        class="frame"
+        loading="lazy"
+        src="https://docs.google.com/spreadsheets/d/e/2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg/pubhtml?gid=505988321&single=true&widget=true&headers=false">
+      </iframe>
+      <div class="meta">
+        <div>
+          Source:
+          <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg/pubhtml?gid=505988321&single=true"
+             target="_blank" rel="noopener">Open tab</a>
+        </div>
+      </div>
     </section>
+
   </div>
-
- <script>
-  const SHEET_ID = "1eeNg4K6PxogSE11Qxa1kowYGt4zlX_skKfogmG43ies";
-  const LEAGUE_GID = "372981515";
-  const AVERAGES_GID = "505988321";
-
-  function url(gid){
-    return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${gid}&tqx=out:html`;
-  }
-
-  fetch(url(LEAGUE_GID))
-    .then(r => r.text())
-    .then(h => league.innerHTML = h);
-
-  fetch(url(AVERAGES_GID))
-    .then(r => r.text())
-    .then(h => averages.innerHTML = h);
-</script>
+</body>
+</html>
