@@ -63,12 +63,12 @@
   </div>
 
   <script>
-    const SHEET_ID = "2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg";
+    const SHEET_ID = "1eeNg4K6PxogSE11Qxa1kowYGt4zlX_skKfogmG43ies";
     const LEAGUE_GID = "372981515";
     const AVERAGES_GID = "505988321";
 
     function url(gid){
-      return `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/gviz/tq?gid=${gid}&tqx=out:html`;
+      return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${gid}&tqx=out:html`;
     }
 
     fetch(url(LEAGUE_GID)).then(r=>r.text()).then(h=>league.innerHTML=h);
