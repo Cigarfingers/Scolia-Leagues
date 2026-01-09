@@ -62,17 +62,20 @@
     </section>
   </div>
 
-  <script>
-    const SHEET_ID = "1eeNg4K6PxogSE11Qxa1kowYGt4zlX_skKfogmG43ies";
-    const LEAGUE_GID = "372981515";
-    const AVERAGES_GID = "505988321";
+ <script>
+  const SHEET_ID = "1eeNg4K6PxogSE11Qxa1kowYGt4zlX_skKfogmG43ies";
+  const LEAGUE_GID = "372981515";
+  const AVERAGES_GID = "505988321";
 
-    function url(gid){
-      return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${gid}&tqx=out:html`;
-    }
+  function url(gid){
+    return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${gid}&tqx=out:html`;
+  }
 
-    fetch(url(LEAGUE_GID)).then(r=>r.text()).then(h=>league.innerHTML=h);
-    fetch(url(AVERAGES_GID)).then(r=>r.text()).then(h=>averages.innerHTML=h);
-  </script>
-</body>
-</html>
+  fetch(url(LEAGUE_GID))
+    .then(r => r.text())
+    .then(h => league.innerHTML = h);
+
+  fetch(url(AVERAGES_GID))
+    .then(r => r.text())
+    .then(h => averages.innerHTML = h);
+</script>
