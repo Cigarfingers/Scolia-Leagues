@@ -486,6 +486,20 @@ function fmtPct(v, decimals = 2){
   return `${v.toFixed(decimals)}%`;
 }
 
+/** Robust key fetch (used in highlights + modal checkout from stat entry) **/
+function normKey(s){
+  return String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function getAny(o, candidates){
+  const keys = Object.keys(o);
+  for (const cand of candidates){
+    const target = normKey(cand);
+    const hit = keys.find(k => normKey(k) === target);
+    if (hit) return o[hit];
+  }
+  return "";
+}
+
 /** Records **/
 function renderRecords(playerStatsObjects){
   const get = (obj, key) => obj[key] ?? obj[key.toUpperCase()] ?? obj[key.toLowerCase()] ?? "";
@@ -526,19 +540,6 @@ function renderRecords(playerStatsObjects){
 }
 
 /** League Highlights (from Stat Entry, overall) **/
-function normKey(s){
-  return String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-function getAny(o, candidates){
-  const keys = Object.keys(o);
-  for (const cand of candidates){
-    const target = normKey(cand);
-    const hit = keys.find(k => normKey(k) === target);
-    if (hit) return o[hit];
-  }
-  return "";
-}
-
 function renderLeagueHighlights(statEntryRows){
   const objs = rowsToObjects(statEntryRows);
 
@@ -598,7 +599,7 @@ function renderLeagueHighlights(statEntryRows){
   };
 
   const checkoutPanel = () => {
-    const MIN_ATTEMPTS = 5; // set to 0 if you want no minimum
+    const MIN_ATTEMPTS = 5; // ✅ your requested minimum
     const eligible = arr
       .map(x => ({...x, cp: pct(x.cm, x.ca)}))
       .filter(x => x.cp !== null && x.ca >= MIN_ATTEMPTS)
@@ -620,6 +621,7 @@ function renderLeagueHighlights(statEntryRows){
         <ul class="ranklist">
           <li><span>${makePlayerClickable(best.player)}</span><span class="badge">${esc(fmtPct(best.cp))}</span></li>
         </ul>
+        <div class="muted" style="margin-top:8px;">Min attempts: ${MIN_ATTEMPTS}</div>
       </div>
     `;
   };
@@ -638,9 +640,27 @@ function renderLeagueHighlights(statEntryRows){
 /** Current Form (from Results) **/
 let PLAYER_STATS_CACHE = null;
 let RESULTS_CACHE = null;
+let STAT_ENTRY_CACHE = null; // ✅ cache Stat Entry as objects
 
 function normName(s){
   return String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** ✅ Checkout % from Stat Entry (so modal never needs Player Stats totals) **/
+function checkoutPctFromStatEntry(playerName){
+  if (!STAT_ENTRY_CACHE) return null;
+
+  const pn = normName(playerName);
+  let made = 0, att = 0;
+
+  for (const o of STAT_ENTRY_CACHE){
+    const p = String(getAny(o, ["Player"]) || "").trim();
+    if (normName(p) !== pn) continue;
+
+    made += num(getAny(o, ["Checkout Made","Checkouts Made"]));
+    att  += num(getAny(o, ["Checkout Attempts","Checkouts Attempted","Checkout Attempted"]));
+  }
+  return pct(made, att);
 }
 
 function buildCurrentForm(playerName, maxGames = 5){
@@ -728,10 +748,8 @@ function openModal(playerName){
 
   const v = (k)=> p[k] ?? "";
 
-  // Checkout % from Player Stats totals (made/attempts). Only show %.
-  const made = num(v("Checkout Made"));
-  const att  = num(v("Checkout Attempts"));
-  const cpct = fmtPct(pct(made, att));
+  // ✅ Checkout % computed from Stat Entry cache (works even if Player Stats has no checkout columns)
+  const cpct = fmtPct(checkoutPctFromStatEntry(playerName));
 
   const html = `
     <div class="profile-grid">
@@ -826,9 +844,10 @@ async function loadAll(){
   // Records
   renderRecords(PLAYER_STATS_CACHE);
 
-  // League highlights (Stat Entry)
+  // Stat Entry (cache + league highlights)
   const seCSV = await fetch(csvUrl(STAT_ENTRY_GID), {cache:"no-store"}).then(r => r.text());
   const seRows = parseCSV(seCSV);
+  STAT_ENTRY_CACHE = rowsToObjects(seRows); // ✅ cache objects for modal checkout %
   renderLeagueHighlights(seRows);
 
   // Results (for Current Form)
