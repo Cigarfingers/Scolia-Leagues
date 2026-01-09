@@ -220,19 +220,19 @@ function renderTable(rows, elId){
   document.getElementById(elId).innerHTML = html;
 }
 
+// ✅ FIX: Strict status check (To Be Played contains "Played" so we must NOT use "includes('played')")
+function normaliseStatus(status){
+  return String(status ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+function isGamePlayed(status){
+  return normaliseStatus(status) === "game played";
+}
 function pill(status){
-  const s = String(status || "").toLowerCase();
-  if (s.includes("played")) return `<span class="pill played">✅ Game Played</span>`;
-  return `<span class="pill tbp">⏳ To Be Played</span>`;
+  return isGamePlayed(status)
+    ? `<span class="pill played">✅ Game Played</span>`
+    : `<span class="pill tbp">⏳ To Be Played</span>`;
 }
 
-/**
- * FIXED Fixtures renderer:
- * - Works even if your sheet has blank columns (e.g. Match in A, Home in C, Away in D)
- * - Shows only the selected matchweek
- * - Played count is per-week, not overall
- * - Released = Yes on ONE row releases the whole week
- */
 function renderFixtures(rows){
   const headers = rows[0].map(h => String(h || "").trim());
 
@@ -244,12 +244,6 @@ function renderFixtures(rows){
   const iAway    = colExact("away");
   const iStatus  = colExact("status");
   const iRelease = colContains("release");
-
-  if (iMatch === -1 || iHome === -1 || iAway === -1 || iStatus === -1 || iRelease === -1) {
-    document.getElementById("fixtures").innerHTML =
-      `<div class="muted">Fixtures headers not found. Ensure headers include: Match, Home, Away, Status, Released.</div>`;
-    return;
-  }
 
   const data = rows.slice(1)
     .filter(r => String(r[iMatch] ?? "").trim() !== "")
@@ -281,7 +275,7 @@ function renderFixtures(rows){
     const week = select.value || releasedWeeks[0];
     const weekRows = data.filter(d => d.match === week);
 
-    const played = weekRows.filter(d => String(d.status).toLowerCase().includes("played")).length;
+    const played = weekRows.filter(d => isGamePlayed(d.status)).length;
     document.getElementById("weekSummary").textContent = `Played: ${played}/${weekRows.length}`;
 
     let html = `<table><thead><tr>
@@ -306,19 +300,14 @@ function renderFixtures(rows){
 }
 
 async function loadAll(){
-  try {
-    const leagueCSV = await fetch(csvUrl(LEAGUE_GID), {cache:"no-store"}).then(r => r.text());
-    renderTable(parseCSV(leagueCSV), "league");
+  const leagueCSV = await fetch(csvUrl(LEAGUE_GID), {cache:"no-store"}).then(r => r.text());
+  renderTable(parseCSV(leagueCSV), "league");
 
-    const avgCSV = await fetch(csvUrl(AVERAGES_GID), {cache:"no-store"}).then(r => r.text());
-    renderTable(parseCSV(avgCSV), "averages");
+  const avgCSV = await fetch(csvUrl(AVERAGES_GID), {cache:"no-store"}).then(r => r.text());
+  renderTable(parseCSV(avgCSV), "averages");
 
-    const fixCSV = await fetch(csvUrl(FIXTURES_GID), {cache:"no-store"}).then(r => r.text());
-    renderFixtures(parseCSV(fixCSV));
-  } catch (e) {
-    document.getElementById("fixtures").innerHTML =
-      `<div class="muted">Error loading fixtures. Try Refresh. (${esc(e.message)})</div>`;
-  }
+  const fixCSV = await fetch(csvUrl(FIXTURES_GID), {cache:"no-store"}).then(r => r.text());
+  renderFixtures(parseCSV(fixCSV));
 }
 
 document.getElementById("refreshBtn").addEventListener("click", loadAll);
