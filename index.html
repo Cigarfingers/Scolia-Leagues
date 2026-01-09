@@ -8,95 +8,113 @@
 <style>
 :root { color-scheme: dark; }
 
-body {
-  margin: 0;
+body{
+  margin:0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   background: radial-gradient(circle at top, #0f1b33, #050914);
-  color: #e5e7eb;
+  color:#e5e7eb;
 }
 
-.wrap {
-  max-width: 1000px;
-  margin: auto;
-  padding: 26px;
-}
+.wrap{ max-width: 1050px; margin: auto; padding: 26px; }
 
-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
+header{ text-align:center; margin-bottom: 26px; }
 
-.logo {
+.logo{
+  display:block;
+  margin: 0 auto 12px;
   max-width: 160px;
-  margin-bottom: 12px;
+  width:100%;
+  height:auto;
 }
 
-h1 {
-  margin: 0 0 6px;
-  font-size: 28px;
-}
+h1{ margin:0 0 6px; font-size: 28px; }
+.sub{ opacity:.8; font-size: 14px; }
 
-.sub {
-  opacity: .8;
-  font-size: 14px;
-}
-
-.section {
+.section{
   background: linear-gradient(180deg, #0e1930, #0b1220);
   border: 1px solid #1f2a44;
   border-radius: 18px;
   padding: 18px;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
   box-shadow: 0 20px 50px rgba(0,0,0,.4);
 }
 
-.section h2 {
-  margin: 0 0 14px;
-  font-size: 18px;
-}
+.section h2{ margin: 0 0 14px; font-size: 18px; }
 
-table {
-  width: 100%;
+.grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 900px){ .grid2{ grid-template-columns: 1fr; } }
+
+table{
+  width:100%;
   border-collapse: collapse;
   font-size: 14px;
 }
 
-th, td {
+th, td{
   padding: 10px 8px;
-  text-align: center;
+  text-align:center;
 }
 
-th {
-  background: #111c36;
+th{
+  background:#111c36;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: .05em;
 }
 
-td {
+td{
   border-bottom: 1px solid #1f2a44;
 }
 
-tbody tr:hover {
-  background: rgba(148,163,184,.08);
-}
+tbody tr:hover{ background: rgba(148,163,184,.08); }
 
-td:first-child,
-th:first-child {
-  text-align: left;
+td:first-child, th:first-child{
+  text-align:left;
   padding-left: 12px;
 }
 
-tbody tr:nth-child(1) { background: rgba(234,179,8,.18); }
-tbody tr:nth-child(2) { background: rgba(148,163,184,.16); }
-tbody tr:nth-child(3) { background: rgba(217,119,6,.16); }
-
-@media (max-width: 700px) {
-  table { font-size: 12px; }
-  th, td { padding: 8px 5px; }
-  .logo { max-width: 130px; }
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space:nowrap;
 }
+
+.pill.played{
+  background: rgba(34,197,94,.15);
+  border:1px solid rgba(34,197,94,.35);
+}
+
+.pill.tbp{
+  background: rgba(239,68,68,.15);
+  border:1px solid rgba(239,68,68,.35);
+}
+
+.toolbar{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+select, button{
+  background:#0b1220;
+  color:#e5e7eb;
+  border:1px solid #263554;
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor:pointer;
+}
+
+button:hover{ background:#101a33; }
+
+.muted{ opacity:.75; font-size: 12px; }
 </style>
 </head>
 
@@ -106,54 +124,111 @@ tbody tr:nth-child(3) { background: rgba(217,119,6,.16); }
 <header>
   <img class="logo" src="https://i.postimg.cc/wTwzxQT3/DDL.png" alt="DDL">
   <h1>DDL Scolia League</h1>
-  <div class="sub">Live standings & player averages</div>
+  <div class="sub">Live standings, averages & fixtures</div>
 </header>
 
-<section class="section">
-  <h2>🏆 League Table</h2>
-  <div id="league">Loading…</div>
-</section>
+<div class="grid2">
+  <section class="section">
+    <h2>🏆 League Table</h2>
+    <div id="league">Loading…</div>
+  </section>
+
+  <section class="section">
+    <h2>🎯 Player Averages</h2>
+    <div id="averages">Loading…</div>
+  </section>
+</div>
 
 <section class="section">
-  <h2>🎯 Player Averages</h2>
-  <div id="averages">Loading…</div>
+  <h2>🗓️ Fixtures</h2>
+
+  <div class="toolbar">
+    <div>
+      <select id="weekSelect"></select>
+      <span class="muted" id="weekSummary"></span>
+    </div>
+    <button id="refreshBtn">Refresh</button>
+  </div>
+
+  <div id="fixtures">Loading…</div>
 </section>
 
 </div>
 
 <script>
-const SHEET_ID = "2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg";
+const PUBLISHED_ID = "2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg";
 
-const LEAGUE_GID = "372981515";
+const LEAGUE_GID   = "372981515";
 const AVERAGES_GID = "505988321";
+const FIXTURES_GID = "309782021";
 
-function csvUrl(gid) {
-  return `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=${gid}&single=true&output=csv`;
+function csvUrl(gid){
+  return `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/pub?gid=${gid}&single=true&output=csv`;
 }
 
-function renderTable(csv, container) {
-  const rows = csv.trim().split("\n").map(r => r.split(","));
-  let html = "<table><thead><tr>";
-  rows[0].forEach(h => html += `<th>${h}</th>`);
-  html += "</tr></thead><tbody>";
+function parseCSV(text){
+  const rows=[], re=/,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+  text.trim().split("\n").forEach(l=>rows.push(l.split(re).map(c=>c.replace(/^"|"$/g,""))));
+  return rows;
+}
 
-  rows.slice(1).forEach(r => {
-    html += "<tr>";
-    r.forEach(c => html += `<td>${c}</td>`);
-    html += "</tr>";
+function pill(status){
+  const s=status.toLowerCase();
+  return s.includes("played")
+    ? `<span class="pill played">✅ Game Played</span>`
+    : `<span class="pill tbp">⏳ To Be Played</span>`;
+}
+
+function renderTable(rows, id){
+  let h="<table><thead><tr>";
+  rows[0].forEach(c=>h+=`<th>${c}</th>`);
+  h+="</tr></thead><tbody>";
+  rows.slice(1).forEach(r=>{
+    h+="<tr>";
+    r.forEach(c=>h+=`<td>${c}</td>`);
+    h+="</tr>";
   });
-
-  html += "</tbody></table>";
-  container.innerHTML = html;
+  h+="</tbody></table>";
+  document.getElementById(id).innerHTML=h;
 }
 
-fetch(csvUrl(LEAGUE_GID))
-  .then(r => r.text())
-  .then(csv => renderTable(csv, document.getElementById("league")));
+function renderFixtures(rows){
+  const [hdr,...data]=rows;
+  const m=hdr.indexOf("Match"), h=hdr.indexOf("Home"),
+        a=hdr.indexOf("Away"), s=hdr.indexOf("Status"),
+        r=hdr.indexOf("Released");
 
-fetch(csvUrl(AVERAGES_GID))
-  .then(r => r.text())
-  .then(csv => renderTable(csv, document.getElementById("averages")));
+  const weeks=[...new Set(data.filter(x=>x[r]=="Yes").map(x=>x[m]))].sort();
+  const select=document.getElementById("weekSelect");
+
+  select.innerHTML=weeks.map(w=>`<option value="${w}">Match ${w}</option>`).join("");
+
+  function show(){
+    const w=select.value;
+    const f=data.filter(x=>x[m]==w);
+    const played=f.filter(x=>x[s].includes("Played")).length;
+    document.getElementById("weekSummary").textContent=`Played: ${played}/${f.length}`;
+
+    let htm=`<table><thead><tr><th>Match</th><th>Home</th><th>Away</th><th>Status</th></tr></thead><tbody>`;
+    f.forEach(x=>{
+      htm+=`<tr><td>${x[m]}</td><td>${x[h]}</td><td>${x[a]}</td><td>${pill(x[s])}</td></tr>`;
+    });
+    htm+="</tbody></table>";
+    document.getElementById("fixtures").innerHTML=htm;
+  }
+
+  select.onchange=show;
+  show();
+}
+
+async function load(){
+  renderTable(parseCSV(await fetch(csvUrl(LEAGUE_GID)).then(r=>r.text())),"league");
+  renderTable(parseCSV(await fetch(csvUrl(AVERAGES_GID)).then(r=>r.text())),"averages");
+  renderFixtures(parseCSV(await fetch(csvUrl(FIXTURES_GID)).then(r=>r.text())));
+}
+
+document.getElementById("refreshBtn").onclick=load;
+load();
 </script>
 
 </body>
