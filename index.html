@@ -39,7 +39,7 @@ h1{ margin:0 0 6px; font-size: 28px; }
   box-shadow: 0 20px 50px rgba(0,0,0,.4);
 }
 
-.section h2{ margin: 0 0 14px; font-size: 18px; }
+.section h2{ margin: 0 0 14px; font-size: 18px; display:flex; align-items:center; gap:10px; }
 
 .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 900px){ .grid2{ grid-template-columns: 1fr; } }
@@ -113,8 +113,125 @@ select, button{
 }
 
 button:hover{ background:#101a33; }
-
 .muted{ opacity:.75; font-size: 12px; }
+
+.clickable{
+  cursor:pointer;
+  color:#c7d2fe;
+  text-decoration: underline;
+  text-decoration-color: rgba(199,210,254,.35);
+  text-underline-offset: 3px;
+}
+.clickable:hover{
+  color:#ffffff;
+  text-decoration-color: rgba(255,255,255,.55);
+}
+
+/* Leaderboards */
+.lists{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 900px){ .lists{ grid-template-columns: 1fr; } }
+
+.panel{
+  border: 1px solid #1f2a44;
+  border-radius: 14px;
+  background: rgba(17,28,54,.35);
+  padding: 12px;
+}
+.panel h3{
+  margin: 0 0 10px;
+  font-size: 14px;
+  opacity: .9;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.ranklist{ margin:0; padding:0; list-style:none; }
+.ranklist li{
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(31,42,68,.6);
+}
+.ranklist li:last-child{ border-bottom:none; }
+.badge{
+  font-size: 12px;
+  opacity:.85;
+  border: 1px solid rgba(38,53,84,.9);
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(11,18,32,.6);
+}
+
+/* Modal */
+.modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display:none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 9999;
+}
+.modal{
+  width: 100%;
+  max-width: 760px;
+  background: linear-gradient(180deg, #0e1930, #0b1220);
+  border: 1px solid #1f2a44;
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  overflow:hidden;
+}
+.modal-header{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(31,42,68,.7);
+}
+.modal-title{
+  display:flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.modal-title strong{ font-size: 16px; }
+.modal-title span{ font-size: 12px; opacity:.75; }
+.modal-close{
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+.modal-body{ padding: 14px 16px; }
+
+.profile-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 800px){ .profile-grid{ grid-template-columns: 1fr; } }
+
+.kpi{
+  border: 1px solid rgba(31,42,68,.7);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(17,28,54,.28);
+}
+.kpi h4{ margin:0 0 8px; font-size: 13px; opacity:.85; }
+.kpi .rows{ display:grid; gap: 8px; }
+.kpi .row{ display:flex; justify-content: space-between; gap: 10px; }
+.kpi .row span:first-child{ opacity:.8; }
+.kpi .row span:last-child{ font-weight: 650; }
+
+.error{
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(239,68,68,.35);
+  background: rgba(239,68,68,.12);
+}
 </style>
 </head>
 
@@ -140,6 +257,17 @@ button:hover{ background:#101a33; }
 </div>
 
 <section class="section">
+  <h2>🔥 Player Records</h2>
+  <div class="lists" id="records">Loading…</div>
+</section>
+
+<section class="section">
+  <h2>📣 Weekly Highlights</h2>
+  <div class="lists" id="highlights">Loading…</div>
+  <div class="muted" id="highlightsRange" style="margin-top:10px;"></div>
+</section>
+
+<section class="section">
   <h2>🗓️ Fixtures</h2>
 
   <div class="toolbar">
@@ -155,19 +283,39 @@ button:hover{ background:#101a33; }
 
 </div>
 
+<!-- Player Modal -->
+<div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Player Profile">
+    <div class="modal-header">
+      <div class="modal-title">
+        <strong id="modalName">Player</strong>
+        <span id="modalSub">Profile</span>
+      </div>
+      <button class="modal-close" id="modalClose" type="button">Close</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      Loading…
+    </div>
+  </div>
+</div>
+
 <script>
 /** CONFIG **/
 const PUBLISHED_ID  = "2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH_7VMFy8dGlALfFOgeHGnX8ZpFkTMg";
+
 const LEAGUE_GID    = "372981515";
 const AVERAGES_GID  = "505988321";
 const FIXTURES_GID  = "309782021";
+
+const PLAYER_STATS_GID = "1551531980";
+const STAT_ENTRY_GID   = "1520567528";
 
 /** Helpers **/
 function csvUrl(gid){
   return `https://docs.google.com/spreadsheets/d/e/${PUBLISHED_ID}/pub?gid=${gid}&single=true&output=csv`;
 }
 
-// Robust CSV parsing (handles commas inside quotes)
+// Robust CSV parser
 function parseCSV(text){
   const rows = [];
   let row = [], cur = "", inQuotes = false;
@@ -187,7 +335,6 @@ function parseCSV(text){
       if (c === "\r" && next === "\n") i++;
       continue;
     }
-
     cur += c;
   }
   if (cur.length || row.length){ row.push(cur); rows.push(row); }
@@ -200,27 +347,6 @@ function esc(s){
   })[m]);
 }
 
-function renderTable(rows, elId){
-  if (!rows || rows.length < 2){
-    document.getElementById(elId).innerHTML = `<div class="muted">No data.</div>`;
-    return;
-  }
-
-  let html = `<table><thead><tr>`;
-  rows[0].forEach(h => html += `<th>${esc(h)}</th>`);
-  html += `</tr></thead><tbody>`;
-
-  rows.slice(1).forEach(r => {
-    html += `<tr>`;
-    rows[0].forEach((_, i) => html += `<td>${esc(r[i] ?? "")}</td>`);
-    html += `</tr>`;
-  });
-
-  html += `</tbody></table>`;
-  document.getElementById(elId).innerHTML = html;
-}
-
-// ✅ FIX: Strict status check (To Be Played contains "Played" so we must NOT use "includes('played')")
 function normaliseStatus(status){
   return String(status ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -233,9 +359,46 @@ function pill(status){
     : `<span class="pill tbp">⏳ To Be Played</span>`;
 }
 
+// Click handler for player names anywhere
+function makePlayerClickable(name){
+  const safe = esc(name);
+  return `<span class="clickable" data-player="${safe}">${safe}</span>`;
+}
+
+// Render generic table, optionally making a specific header column clickable (e.g. PLAYER)
+function renderTable(rows, elId, clickableHeaderNamesLower = []){
+  if (!rows || rows.length < 2){
+    document.getElementById(elId).innerHTML = `<div class="muted">No data.</div>`;
+    return;
+  }
+
+  const headers = rows[0].map(h => String(h||"").trim());
+  const clickableCols = new Set();
+  headers.forEach((h, i) => {
+    if (clickableHeaderNamesLower.includes(h.toLowerCase())) clickableCols.add(i);
+  });
+
+  let html = `<table><thead><tr>`;
+  headers.forEach(h => html += `<th>${esc(h)}</th>`);
+  html += `</tr></thead><tbody>`;
+
+  rows.slice(1).forEach(r => {
+    html += `<tr>`;
+    headers.forEach((_, i) => {
+      const v = String(r[i] ?? "");
+      const cell = clickableCols.has(i) ? makePlayerClickable(v) : esc(v);
+      html += `<td>${cell}</td>`;
+    });
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById(elId).innerHTML = html;
+}
+
+/** Fixtures renderer (handles blank columns + Released gating) **/
 function renderFixtures(rows){
   const headers = rows[0].map(h => String(h || "").trim());
-
   const colExact = (name) => headers.findIndex(h => h.toLowerCase() === name);
   const colContains = (txt) => headers.findIndex(h => h.toLowerCase().includes(txt));
 
@@ -255,13 +418,11 @@ function renderFixtures(rows){
       released: String(r[iRelease] ?? "").trim().toLowerCase()
     }));
 
-  // ANY row in a week marked "Yes" releases the WHOLE week
   const releasedWeeks = [...new Set(
     data.filter(d => ["yes","true","y","1"].includes(d.released)).map(d => d.match)
   )].sort((a,b) => (Number(a) - Number(b)));
 
   const select = document.getElementById("weekSelect");
-
   if (!releasedWeeks.length) {
     select.innerHTML = `<option value="">No fixtures released</option>`;
     document.getElementById("weekSummary").textContent = "";
@@ -285,8 +446,8 @@ function renderFixtures(rows){
     weekRows.forEach(r => {
       html += `<tr>
         <td>${esc(r.match)}</td>
-        <td>${esc(r.home)}</td>
-        <td>${esc(r.away)}</td>
+        <td>${makePlayerClickable(r.home)}</td>
+        <td>${makePlayerClickable(r.away)}</td>
         <td>${pill(r.status)}</td>
       </tr>`;
     });
@@ -299,15 +460,276 @@ function renderFixtures(rows){
   draw();
 }
 
+/** Player Stats parsing **/
+function rowsToObjects(rows){
+  const headers = rows[0].map(h => String(h||"").trim());
+  return rows.slice(1).map(r => {
+    const o = {};
+    headers.forEach((h, i) => o[h] = r[i] ?? "");
+    return o;
+  });
+}
+function num(x){
+  const n = Number(String(x ?? "").trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Records **/
+function renderRecords(playerStatsObjects){
+  const get = (obj, key) => obj[key] ?? obj[key.toUpperCase()] ?? obj[key.toLowerCase()] ?? "";
+
+  const leaderboard = (title, emoji, valueKey, dir = "desc", limit=5, isBestLeg=false) => {
+    const items = playerStatsObjects
+      .map(p => ({
+        player: get(p, "Player"),
+        val: num(get(p, valueKey))
+      }))
+      .filter(x => x.player && (isBestLeg ? x.val > 0 : true))
+      .sort((a,b) => dir === "asc" ? (a.val - b.val) : (b.val - a.val))
+      .slice(0, limit);
+
+    const lis = items.map((x, i) => `
+      <li>
+        <span>${i+1}. ${makePlayerClickable(x.player)}</span>
+        <span class="badge">${esc(x.val)}</span>
+      </li>
+    `).join("");
+
+    return `
+      <div class="panel">
+        <h3>${emoji} ${esc(title)}</h3>
+        <ul class="ranklist">${lis || `<li><span class="muted">No data yet</span><span></span></li>`}</ul>
+      </div>
+    `;
+  };
+
+  const html =
+    leaderboard("Most 180s", "💥", "180", "desc") +
+    leaderboard("Most 140+", "🔥", "140+", "desc") +
+    leaderboard("Most 100+", "🎯", "100+", "desc") +
+    leaderboard("Highest Finish", "🏆", "Highest Finish", "desc") +
+    leaderboard("Best Leg (Lowest)", "⚡", "Best Leg", "asc", 5, true);
+
+  document.getElementById("records").innerHTML = html;
+}
+
+/** Weekly Highlights **/
+function parseDateAny(s){
+  const t = String(s || "").trim();
+  if (!t) return null;
+
+  const d1 = new Date(t);
+  if (!isNaN(d1)) return d1;
+
+  const parts = t.split(/[\/\-\.]/).map(x => x.trim());
+  if (parts.length === 3){
+    const [a,b,c] = parts.map(Number);
+    const d2 = new Date(c, a-1, b);
+    if (!isNaN(d2)) return d2;
+  }
+  return null;
+}
+
+function startOfWeekMonday(d){
+  const x = new Date(d);
+  x.setHours(0,0,0,0);
+  const day = (x.getDay() + 6) % 7; // Mon=0 ... Sun=6
+  x.setDate(x.getDate() - day);
+  return x;
+}
+
+function renderWeeklyHighlights(statEntryRows){
+  const objs = rowsToObjects(statEntryRows);
+
+  const now = new Date();
+  const weekStart = startOfWeekMonday(now);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const week = objs
+    .map(o => ({
+      date: parseDateAny(o["Date"]),
+      player: o["Player"] || o["player"] || "",
+      s100: num(o["100+"]),
+      s140: num(o["140+"]),
+      s180: num(o["180"]),
+      hf: num(o["Highest Finish"]),
+      bl: num(o["Best Leg"])
+    }))
+    .filter(x => x.date && x.date >= weekStart && x.date < weekEnd && x.player);
+
+  const rangeText = `${weekStart.toLocaleDateString()} – ${new Date(weekEnd-1).toLocaleDateString()}`;
+  document.getElementById("highlightsRange").textContent = `This week (Mon–Sun): ${rangeText}`;
+
+  if (!week.length){
+    document.getElementById("highlights").innerHTML =
+      `<div class="panel"><h3>ℹ️ No stats logged this week</h3><div class="muted">Add new rows in Stat Entry and it will populate automatically.</div></div>`;
+    return;
+  }
+
+  const agg = new Map();
+  for (const r of week){
+    if (!agg.has(r.player)){
+      agg.set(r.player, {player:r.player, s100:0, s140:0, s180:0, hf:0, bl: null});
+    }
+    const a = agg.get(r.player);
+    a.s100 += r.s100;
+    a.s140 += r.s140;
+    a.s180 += r.s180;
+    a.hf = Math.max(a.hf, r.hf || 0);
+    if (r.bl > 0) a.bl = (a.bl === null) ? r.bl : Math.min(a.bl, r.bl);
+  }
+  const arr = [...agg.values()];
+
+  const topOne = (title, emoji, accessor, formatter = (v)=>v, dir="desc") => {
+    const sorted = [...arr].sort((x,y) => {
+      const ax = accessor(x), ay = accessor(y);
+      if (dir === "asc") return (ax ?? 1e9) - (ay ?? 1e9);
+      return (ay ?? -1) - (ax ?? -1);
+    });
+    const best = sorted[0];
+    const v = accessor(best);
+    return `
+      <div class="panel">
+        <h3>${emoji} ${esc(title)}</h3>
+        <ul class="ranklist">
+          <li><span>${makePlayerClickable(best.player)}</span><span class="badge">${esc(formatter(v))}</span></li>
+        </ul>
+      </div>
+    `;
+  };
+
+  const html =
+    topOne("Most 180s (This Week)", "💥", x=>x.s180) +
+    topOne("Most 140+ (This Week)", "🔥", x=>x.s140) +
+    topOne("Most 100+ (This Week)", "🎯", x=>x.s100) +
+    topOne("Best Checkout (This Week)", "🏆", x=>x.hf) +
+    topOne("Best Leg (Lowest, This Week)", "⚡", x=>x.bl, v => (v==null? "—": v), "asc");
+
+  document.getElementById("highlights").innerHTML = html;
+}
+
+/** Player Profile Modal **/
+let PLAYER_STATS_CACHE = null;
+
+function openModal(playerName){
+  const backdrop = document.getElementById("modalBackdrop");
+  const nameEl = document.getElementById("modalName");
+  const bodyEl = document.getElementById("modalBody");
+  const subEl = document.getElementById("modalSub");
+
+  nameEl.textContent = playerName;
+  subEl.textContent = "Player Profile";
+  bodyEl.innerHTML = "Loading…";
+  backdrop.style.display = "flex";
+  backdrop.setAttribute("aria-hidden", "false");
+
+  if (!PLAYER_STATS_CACHE){
+    bodyEl.innerHTML = `<div class="error">Player Stats not loaded yet.</div>`;
+    return;
+  }
+
+  const p = PLAYER_STATS_CACHE.find(x => (x["Player"] || "") === playerName);
+  if (!p){
+    bodyEl.innerHTML = `<div class="error">No profile data found for this player yet.</div>`;
+    return;
+  }
+
+  const v = (k)=> p[k] ?? "";
+
+  const html = `
+    <div class="profile-grid">
+      <div class="kpi">
+        <h4>Record</h4>
+        <div class="rows">
+          <div class="row"><span>Matches</span><span>${esc(v("Matches"))}</span></div>
+          <div class="row"><span>Wins / Draws / Losses</span><span>${esc(v("Wins"))} / ${esc(v("Draws"))} / ${esc(v("Losses"))}</span></div>
+          <div class="row"><span>Legs Won / Lost</span><span>${esc(v("Legs Won"))} / ${esc(v("Legs Lost"))}</span></div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <h4>Scoring (Totals)</h4>
+        <div class="rows">
+          <div class="row"><span>60+</span><span>${esc(v("60+"))}</span></div>
+          <div class="row"><span>80+</span><span>${esc(v("80+"))}</span></div>
+          <div class="row"><span>100+</span><span>${esc(v("100+"))}</span></div>
+          <div class="row"><span>140+</span><span>${esc(v("140+"))}</span></div>
+          <div class="row"><span>180</span><span>${esc(v("180"))}</span></div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <h4>Records</h4>
+        <div class="rows">
+          <div class="row"><span>Highest Finish</span><span>${esc(v("Highest Finish") || "—")}</span></div>
+          <div class="row"><span>Best Leg (Lowest)</span><span>${esc(v("Best Leg") || "—")}</span></div>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <h4>Quick Notes</h4>
+        <div class="rows">
+          <div class="row"><span>Tip</span><span>More stats can be added anytime</span></div>
+          <div class="row"><span>Source</span><span>Results + Stat Entry</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  bodyEl.innerHTML = html;
+}
+
+function closeModal(){
+  const backdrop = document.getElementById("modalBackdrop");
+  backdrop.style.display = "none";
+  backdrop.setAttribute("aria-hidden", "true");
+}
+
+document.getElementById("modalClose").addEventListener("click", closeModal);
+document.getElementById("modalBackdrop").addEventListener("click", (e) => {
+  if (e.target.id === "modalBackdrop") closeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModal();
+});
+
+// delegate player clicks
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-player]");
+  if (!t) return;
+  const name = t.getAttribute("data-player");
+  if (name) openModal(name);
+});
+
+/** Load all **/
 async function loadAll(){
+  // League
   const leagueCSV = await fetch(csvUrl(LEAGUE_GID), {cache:"no-store"}).then(r => r.text());
-  renderTable(parseCSV(leagueCSV), "league");
+  renderTable(parseCSV(leagueCSV), "league", ["player"]);
 
+  // Averages
   const avgCSV = await fetch(csvUrl(AVERAGES_GID), {cache:"no-store"}).then(r => r.text());
-  renderTable(parseCSV(avgCSV), "averages");
+  const avgRows = parseCSV(avgCSV);
+  const avgHeaders = avgRows[0].map(h => String(h||"").trim().toLowerCase());
+  const firstHeader = avgHeaders[0] || "player";
+  renderTable(avgRows, "averages", [firstHeader]);
 
+  // Fixtures
   const fixCSV = await fetch(csvUrl(FIXTURES_GID), {cache:"no-store"}).then(r => r.text());
   renderFixtures(parseCSV(fixCSV));
+
+  // Player Stats
+  const psCSV = await fetch(csvUrl(PLAYER_STATS_GID), {cache:"no-store"}).then(r => r.text());
+  const psRows = parseCSV(psCSV);
+  PLAYER_STATS_CACHE = rowsToObjects(psRows);
+
+  // Records
+  renderRecords(PLAYER_STATS_CACHE);
+
+  // Weekly highlights (Stat Entry)
+  const seCSV = await fetch(csvUrl(STAT_ENTRY_GID), {cache:"no-store"}).then(r => r.text());
+  const seRows = parseCSV(seCSV);
+  renderWeeklyHighlights(seRows);
 }
 
 document.getElementById("refreshBtn").addEventListener("click", loadAll);
