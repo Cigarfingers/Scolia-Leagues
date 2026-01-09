@@ -289,7 +289,7 @@ button:hover{ background:#101a33; }
     <div class="modal-header">
       <div class="modal-title">
         <strong id="modalName">Player</strong>
-        <span id="modalSub">Profile</span>
+        <span id="modalSub">Player Profile</span>
       </div>
       <button class="modal-close" id="modalClose" type="button">Close</button>
     </div>
@@ -306,6 +306,7 @@ const PUBLISHED_ID  = "2PACX-1vTVhX-SEr3O85L6si4hEs6_XvTuSTXsLS20qVhfLcf_HfHEmgH
 const LEAGUE_GID    = "372981515";
 const AVERAGES_GID  = "505988321";
 const FIXTURES_GID  = "309782021";
+const RESULTS_GID   = "1902038275";
 
 const PLAYER_STATS_GID = "1551531980";
 const STAT_ENTRY_GID   = "1520567528";
@@ -608,17 +609,68 @@ function renderWeeklyHighlights(statEntryRows){
   document.getElementById("highlights").innerHTML = html;
 }
 
-/** Player Profile Modal **/
+/** Current Form (from Results) **/
 let PLAYER_STATS_CACHE = null;
+let RESULTS_CACHE = null;
 
+function buildCurrentForm(playerName, maxGames = 5){
+  if (!RESULTS_CACHE) return null;
+
+  const get = (o, key) => o[key] ?? o[key.toLowerCase()] ?? o[key.toUpperCase()] ?? "";
+  const norm = s => String(s ?? "").trim();
+
+  const games = RESULTS_CACHE
+    .map(o => ({
+      date: norm(get(o,"Date")),
+      home: norm(get(o,"Home Player")),
+      away: norm(get(o,"Away Player")),
+      winner: norm(get(o,"Winner")),
+      loser: norm(get(o,"Loser")),
+      draw: norm(get(o,"Draw?")),
+    }))
+    .filter(g => g.home === playerName || g.away === playerName);
+
+  const parse = (d) => {
+    const x = new Date(d);
+    return isNaN(x) ? null : x;
+  };
+  const withParsed = games.map(g => ({...g, _d: parse(g.date)}));
+  const sortable = withParsed.some(g => g._d);
+
+  const ordered = sortable
+    ? withParsed.sort((a,b) => (a._d?.getTime() || 0) - (b._d?.getTime() || 0))
+    : withParsed;
+
+  const last = ordered.slice(-maxGames).reverse(); // latest first
+
+  return last.map(g => {
+    if (String(g.draw).toUpperCase() === "Y") return "D";
+    if (g.winner === playerName) return "W";
+    if (g.loser === playerName) return "L";
+    return "?";
+  });
+}
+
+function renderFormPills(formLetters){
+  if (!formLetters || !formLetters.length) return `<span class="muted">No recent results</span>`;
+
+  const pillFor = (ch) => {
+    if (ch === "W") return `<span class="badge" style="border-color: rgba(34,197,94,.55)">W</span>`;
+    if (ch === "D") return `<span class="badge" style="border-color: rgba(234,179,8,.55)">D</span>`;
+    if (ch === "L") return `<span class="badge" style="border-color: rgba(239,68,68,.55)">L</span>`;
+    return `<span class="badge">?</span>`;
+  };
+
+  return `<div style="display:flex; gap:8px; flex-wrap:wrap;">${formLetters.map(pillFor).join("")}</div>`;
+}
+
+/** Player Profile Modal **/
 function openModal(playerName){
   const backdrop = document.getElementById("modalBackdrop");
   const nameEl = document.getElementById("modalName");
   const bodyEl = document.getElementById("modalBody");
-  const subEl = document.getElementById("modalSub");
 
   nameEl.textContent = playerName;
-  subEl.textContent = "Player Profile";
   bodyEl.innerHTML = "Loading…";
   backdrop.style.display = "flex";
   backdrop.setAttribute("aria-hidden", "false");
@@ -667,10 +719,12 @@ function openModal(playerName){
       </div>
 
       <div class="kpi">
-        <h4>Quick Notes</h4>
+        <h4>Current Form (Last 5)</h4>
         <div class="rows">
-          <div class="row"><span>Tip</span><span>More stats can be added anytime</span></div>
-          <div class="row"><span>Source</span><span>Results + Stat Entry</span></div>
+          <div class="row">
+            <span>Latest → Oldest</span>
+            <span>${renderFormPills(buildCurrentForm(playerName, 5))}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -730,6 +784,11 @@ async function loadAll(){
   const seCSV = await fetch(csvUrl(STAT_ENTRY_GID), {cache:"no-store"}).then(r => r.text());
   const seRows = parseCSV(seCSV);
   renderWeeklyHighlights(seRows);
+
+  // Results (for Current Form)
+  const resCSV = await fetch(csvUrl(RESULTS_GID), {cache:"no-store"}).then(r => r.text());
+  const resRows = parseCSV(resCSV);
+  RESULTS_CACHE = rowsToObjects(resRows);
 }
 
 document.getElementById("refreshBtn").addEventListener("click", loadAll);
