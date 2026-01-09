@@ -461,9 +461,9 @@ function renderFixtures(rows){
   draw();
 }
 
-/** Player Stats parsing **/
+/** Player Stats parsing + FIXED header matching **/
 function rowsToObjects(rows){
-  const headers = rows[0].map(h => String(h||"").trim());
+  const headers = rows[0].map(h => String(h || "").trim()); // TRIM headers
   return rows.slice(1).map(r => {
     const o = {};
     headers.forEach((h, i) => o[h] = r[i] ?? "");
@@ -609,44 +609,70 @@ function renderWeeklyHighlights(statEntryRows){
   document.getElementById("highlights").innerHTML = html;
 }
 
-/** Current Form (from Results) **/
+/** Current Form (from Results) - FIXED robust header + name matching **/
 let PLAYER_STATS_CACHE = null;
 let RESULTS_CACHE = null;
 
-function buildCurrentForm(playerName, maxGames = 5){
-  if (!RESULTS_CACHE) return null;
+function normKey(s){
+  return String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function normName(s){
+  return String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+function getAny(o, candidates){
+  const keys = Object.keys(o);
+  for (const cand of candidates){
+    const target = normKey(cand);
+    const hit = keys.find(k => normKey(k) === target);
+    if (hit) return o[hit];
+  }
+  return "";
+}
 
-  const get = (o, key) => o[key] ?? o[key.toLowerCase()] ?? o[key.toUpperCase()] ?? "";
-  const norm = s => String(s ?? "").trim();
+function buildCurrentForm(playerName, maxGames = 5){
+  if (!RESULTS_CACHE) return [];
+
+  const pn = normName(playerName);
+
+  const H_HOME   = ["Home Player","Home"];
+  const H_AWAY   = ["Away Player","Away"];
+  const H_WINNER = ["Winner"];
+  const H_LOSER  = ["Loser"];
+  const H_DRAW   = ["Draw?","Draw"];
+  const H_DATE   = ["Date"];
 
   const games = RESULTS_CACHE
     .map(o => ({
-      date: norm(get(o,"Date")),
-      home: norm(get(o,"Home Player")),
-      away: norm(get(o,"Away Player")),
-      winner: norm(get(o,"Winner")),
-      loser: norm(get(o,"Loser")),
-      draw: norm(get(o,"Draw?")),
+      date: String(getAny(o, H_DATE) ?? "").trim(),
+      home: String(getAny(o, H_HOME) ?? "").trim(),
+      away: String(getAny(o, H_AWAY) ?? "").trim(),
+      winner: String(getAny(o, H_WINNER) ?? "").trim(),
+      loser: String(getAny(o, H_LOSER) ?? "").trim(),
+      draw: String(getAny(o, H_DRAW) ?? "").trim(),
     }))
-    .filter(g => g.home === playerName || g.away === playerName);
+    .filter(g => normName(g.home) === pn || normName(g.away) === pn);
+
+  if (!games.length) return [];
 
   const parse = (d) => {
     const x = new Date(d);
-    return isNaN(x) ? null : x;
+    return isNaN(x) ? null : x.getTime();
   };
-  const withParsed = games.map(g => ({...g, _d: parse(g.date)}));
-  const sortable = withParsed.some(g => g._d);
+
+  const withT = games.map(g => ({...g, t: parse(g.date)}));
+  const sortable = withT.some(g => g.t !== null);
 
   const ordered = sortable
-    ? withParsed.sort((a,b) => (a._d?.getTime() || 0) - (b._d?.getTime() || 0))
-    : withParsed;
+    ? withT.sort((a,b) => (a.t ?? 0) - (b.t ?? 0))
+    : withT;
 
   const last = ordered.slice(-maxGames).reverse(); // latest first
 
   return last.map(g => {
-    if (String(g.draw).toUpperCase() === "Y") return "D";
-    if (g.winner === playerName) return "W";
-    if (g.loser === playerName) return "L";
+    const isDraw = String(g.draw).trim().toLowerCase();
+    if (isDraw === "y" || isDraw === "yes" || isDraw === "true" || isDraw === "1") return "D";
+    if (normName(g.winner) === pn) return "W";
+    if (normName(g.loser) === pn) return "L";
     return "?";
   });
 }
