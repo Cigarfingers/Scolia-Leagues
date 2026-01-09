@@ -262,7 +262,7 @@ button:hover{ background:#101a33; }
 </section>
 
 <section class="section">
-  <h2>📣 Weekly Highlights</h2>
+  <h2>📣 League Highlights</h2>
   <div class="lists" id="highlights">Loading…</div>
   <div class="muted" id="highlightsRange" style="margin-top:10px;"></div>
 </section>
@@ -461,7 +461,7 @@ function renderFixtures(rows){
   draw();
 }
 
-/** Player Stats parsing + FIXED header matching **/
+/** Player Stats parsing + robust header matching **/
 function rowsToObjects(rows){
   const headers = rows[0].map(h => String(h || "").trim()); // TRIM headers
   return rows.slice(1).map(r => {
@@ -471,8 +471,19 @@ function rowsToObjects(rows){
   });
 }
 function num(x){
-  const n = Number(String(x ?? "").trim());
+  const n = Number(String(x ?? "").trim().replace("%",""));
   return Number.isFinite(n) ? n : 0;
+}
+
+/** Checkout helpers (site displays % only) **/
+function pct(made, att){
+  const m = num(made), a = num(att);
+  if (a <= 0) return null;
+  return (m / a) * 100;
+}
+function fmtPct(v, decimals = 2){
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  return `${v.toFixed(decimals)}%`;
 }
 
 /** Records **/
@@ -514,63 +525,48 @@ function renderRecords(playerStatsObjects){
   document.getElementById("records").innerHTML = html;
 }
 
-/** Weekly Highlights **/
-function parseDateAny(s){
-  const t = String(s || "").trim();
-  if (!t) return null;
-
-  const d1 = new Date(t);
-  if (!isNaN(d1)) return d1;
-
-  const parts = t.split(/[\/\-\.]/).map(x => x.trim());
-  if (parts.length === 3){
-    const [a,b,c] = parts.map(Number);
-    const d2 = new Date(c, a-1, b);
-    if (!isNaN(d2)) return d2;
+/** League Highlights (from Stat Entry, overall) **/
+function normKey(s){
+  return String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function getAny(o, candidates){
+  const keys = Object.keys(o);
+  for (const cand of candidates){
+    const target = normKey(cand);
+    const hit = keys.find(k => normKey(k) === target);
+    if (hit) return o[hit];
   }
-  return null;
+  return "";
 }
 
-function startOfWeekMonday(d){
-  const x = new Date(d);
-  x.setHours(0,0,0,0);
-  const day = (x.getDay() + 6) % 7; // Mon=0 ... Sun=6
-  x.setDate(x.getDate() - day);
-  return x;
-}
-
-function renderWeeklyHighlights(statEntryRows){
+function renderLeagueHighlights(statEntryRows){
   const objs = rowsToObjects(statEntryRows);
 
-  const now = new Date();
-  const weekStart = startOfWeekMonday(now);
-  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
-
-  const week = objs
+  const all = objs
     .map(o => ({
-      date: parseDateAny(o["Date"]),
-      player: o["Player"] || o["player"] || "",
-      s100: num(o["100+"]),
-      s140: num(o["140+"]),
-      s180: num(o["180"]),
-      hf: num(o["Highest Finish"]),
-      bl: num(o["Best Leg"])
+      player: String(getAny(o, ["Player"]) || "").trim(),
+      s100: num(getAny(o, ["100+","100 +"])),
+      s140: num(getAny(o, ["140+","140 +"])),
+      s180: num(getAny(o, ["180"])),
+      hf:   num(getAny(o, ["Highest Finish","High Finish"])),
+      bl:   num(getAny(o, ["Best Leg","Best Leg (Lowest)"])),
+      cm:   num(getAny(o, ["Checkout Made","Checkouts Made"])),
+      ca:   num(getAny(o, ["Checkout Attempts","Checkouts Attempted","Checkout Attempted"])),
     }))
-    .filter(x => x.date && x.date >= weekStart && x.date < weekEnd && x.player);
+    .filter(x => x.player);
 
-  const rangeText = `${weekStart.toLocaleDateString()} – ${new Date(weekEnd-1).toLocaleDateString()}`;
-  document.getElementById("highlightsRange").textContent = `This week (Mon–Sun): ${rangeText}`;
+  document.getElementById("highlightsRange").textContent = `Overall (all logged Stat Entry rows)`;
 
-  if (!week.length){
+  if (!all.length){
     document.getElementById("highlights").innerHTML =
-      `<div class="panel"><h3>ℹ️ No stats logged this week</h3><div class="muted">Add new rows in Stat Entry and it will populate automatically.</div></div>`;
+      `<div class="panel"><h3>ℹ️ No stats logged yet</h3><div class="muted">Add rows in Stat Entry and it will populate automatically.</div></div>`;
     return;
   }
 
   const agg = new Map();
-  for (const r of week){
+  for (const r of all){
     if (!agg.has(r.player)){
-      agg.set(r.player, {player:r.player, s100:0, s140:0, s180:0, hf:0, bl: null});
+      agg.set(r.player, {player:r.player, s100:0, s140:0, s180:0, hf:0, bl: null, cm:0, ca:0});
     }
     const a = agg.get(r.player);
     a.s100 += r.s100;
@@ -578,6 +574,8 @@ function renderWeeklyHighlights(statEntryRows){
     a.s180 += r.s180;
     a.hf = Math.max(a.hf, r.hf || 0);
     if (r.bl > 0) a.bl = (a.bl === null) ? r.bl : Math.min(a.bl, r.bl);
+    a.cm += r.cm;
+    a.ca += r.ca;
   }
   const arr = [...agg.values()];
 
@@ -599,34 +597,50 @@ function renderWeeklyHighlights(statEntryRows){
     `;
   };
 
+  const checkoutPanel = () => {
+    const MIN_ATTEMPTS = 5; // set to 0 if you want no minimum
+    const eligible = arr
+      .map(x => ({...x, cp: pct(x.cm, x.ca)}))
+      .filter(x => x.cp !== null && x.ca >= MIN_ATTEMPTS)
+      .sort((a,b) => b.cp - a.cp);
+
+    if (!eligible.length){
+      return `
+        <div class="panel">
+          <h3>✅ Best Checkout % (League)</h3>
+          <div class="muted">Not enough checkout data yet.</div>
+        </div>
+      `;
+    }
+
+    const best = eligible[0];
+    return `
+      <div class="panel">
+        <h3>✅ Best Checkout % (League)</h3>
+        <ul class="ranklist">
+          <li><span>${makePlayerClickable(best.player)}</span><span class="badge">${esc(fmtPct(best.cp))}</span></li>
+        </ul>
+      </div>
+    `;
+  };
+
   const html =
-    topOne("Most 180s (This Week)", "💥", x=>x.s180) +
-    topOne("Most 140+ (This Week)", "🔥", x=>x.s140) +
-    topOne("Most 100+ (This Week)", "🎯", x=>x.s100) +
-    topOne("Best Checkout (This Week)", "🏆", x=>x.hf) +
-    topOne("Best Leg (Lowest, This Week)", "⚡", x=>x.bl, v => (v==null? "—": v), "asc");
+    topOne("Most 180s (League)", "💥", x=>x.s180) +
+    topOne("Most 140+ (League)", "🔥", x=>x.s140) +
+    topOne("Most 100+ (League)", "🎯", x=>x.s100) +
+    topOne("Best Checkout (League)", "🏆", x=>x.hf) +
+    checkoutPanel() +
+    topOne("Best Leg (Lowest, League)", "⚡", x=>x.bl, v => (v==null? "—": v), "asc");
 
   document.getElementById("highlights").innerHTML = html;
 }
 
-/** Current Form (from Results) - FIXED robust header + name matching **/
+/** Current Form (from Results) **/
 let PLAYER_STATS_CACHE = null;
 let RESULTS_CACHE = null;
 
-function normKey(s){
-  return String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
 function normName(s){
   return String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-}
-function getAny(o, candidates){
-  const keys = Object.keys(o);
-  for (const cand of candidates){
-    const target = normKey(cand);
-    const hit = keys.find(k => normKey(k) === target);
-    if (hit) return o[hit];
-  }
-  return "";
 }
 
 function buildCurrentForm(playerName, maxGames = 5){
@@ -714,6 +728,11 @@ function openModal(playerName){
 
   const v = (k)=> p[k] ?? "";
 
+  // Checkout % from Player Stats totals (made/attempts). Only show %.
+  const made = num(v("Checkout Made"));
+  const att  = num(v("Checkout Attempts"));
+  const cpct = fmtPct(pct(made, att));
+
   const html = `
     <div class="profile-grid">
       <div class="kpi">
@@ -741,6 +760,7 @@ function openModal(playerName){
         <div class="rows">
           <div class="row"><span>Highest Finish</span><span>${esc(v("Highest Finish") || "—")}</span></div>
           <div class="row"><span>Best Leg (Lowest)</span><span>${esc(v("Best Leg") || "—")}</span></div>
+          <div class="row"><span>Checkout %</span><span>${esc(cpct)}</span></div>
         </div>
       </div>
 
@@ -806,10 +826,10 @@ async function loadAll(){
   // Records
   renderRecords(PLAYER_STATS_CACHE);
 
-  // Weekly highlights (Stat Entry)
+  // League highlights (Stat Entry)
   const seCSV = await fetch(csvUrl(STAT_ENTRY_GID), {cache:"no-store"}).then(r => r.text());
   const seRows = parseCSV(seCSV);
-  renderWeeklyHighlights(seRows);
+  renderLeagueHighlights(seRows);
 
   // Results (for Current Form)
   const resCSV = await fetch(csvUrl(RESULTS_GID), {cache:"no-store"}).then(r => r.text());
