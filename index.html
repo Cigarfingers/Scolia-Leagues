@@ -359,6 +359,12 @@ function pill(status){
     : `<span class="pill tbp">⏳ To Be Played</span>`;
 }
 
+/**
+ * Option A clickability:
+ * ✅ League table names clickable
+ * ✅ Fixtures home/away clickable
+ * ❌ Averages, Records, Highlights NOT clickable
+ */
 function makePlayerClickable(name){
   const safe = esc(name);
   return `<span class="clickable" data-player="${safe}">${safe}</span>`;
@@ -471,7 +477,6 @@ function num(x){
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Checkout helpers **/
 function pct(made, att){
   const m = num(made), a = num(att);
   if (a <= 0) return null;
@@ -482,7 +487,6 @@ function fmtPct(v, decimals = 2){
   return `${v.toFixed(decimals)}%`;
 }
 
-/** Robust key fetch **/
 function normKey(s){
   return String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
@@ -496,19 +500,18 @@ function getAny(o, candidates){
   return "";
 }
 
-/** Name normalisation + loose matching **/
 function normName(s){
   return String(s ?? "")
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/[’]/g, "'"); // smart apostrophe -> normal
+    .replace(/[’]/g, "'");
 }
 function samePlayer(a, b){
   return normName(a) === normName(b);
 }
 
-/** Records **/
+/** Records (NOT clickable in Option A) **/
 function renderRecords(playerStatsObjects){
   const get = (obj, key) => obj[key] ?? obj[key.toUpperCase()] ?? obj[key.toLowerCase()] ?? "";
 
@@ -524,7 +527,7 @@ function renderRecords(playerStatsObjects){
 
     const lis = items.map((x, i) => `
       <li>
-        <span>${i+1}. ${makePlayerClickable(x.player)}</span>
+        <span>${i+1}. ${esc(x.player)}</span>
         <span class="badge">${esc(x.val)}</span>
       </li>
     `).join("");
@@ -547,7 +550,7 @@ function renderRecords(playerStatsObjects){
   document.getElementById("records").innerHTML = html;
 }
 
-/** League Highlights **/
+/** League Highlights - Top 3 each (NOT clickable in Option A) **/
 function renderLeagueHighlights(statEntryRows){
   const objs = rowsToObjects(statEntryRows);
 
@@ -588,19 +591,25 @@ function renderLeagueHighlights(statEntryRows){
   }
   const arr = [...agg.values()];
 
-  const topOne = (title, emoji, accessor, formatter = (v)=>v, dir="desc") => {
-    const sorted = [...arr].sort((x,y) => {
-      const ax = accessor(x), ay = accessor(y);
-      if (dir === "asc") return (ax ?? 1e9) - (ay ?? 1e9);
-      return (ay ?? -1) - (ax ?? -1);
-    });
-    const best = sorted[0];
-    const v = accessor(best);
+  const topN = (title, emoji, accessor, formatter=(v)=>v, dir="desc", limit=3) => {
+    const sorted = [...arr]
+      .map(x => ({ player: x.player, val: accessor(x) }))
+      .filter(x => x.player && x.val !== null && x.val !== undefined && x.val !== "")
+      .sort((a,b) => dir === "asc" ? (a.val - b.val) : (b.val - a.val))
+      .slice(0, limit);
+
+    const lis = sorted.map((x,i) => `
+      <li>
+        <span>${i+1}. ${esc(x.player)}</span>
+        <span class="badge">${esc(formatter(x.val))}</span>
+      </li>
+    `).join("");
+
     return `
       <div class="panel">
         <h3>${emoji} ${esc(title)}</h3>
         <ul class="ranklist">
-          <li><span>${makePlayerClickable(best.player)}</span><span class="badge">${esc(formatter(v))}</span></li>
+          ${lis || `<li><span class="muted">No data yet</span><span></span></li>`}
         </ul>
       </div>
     `;
@@ -608,26 +617,25 @@ function renderLeagueHighlights(statEntryRows){
 
   const checkoutPanel = () => {
     const MIN_ATTEMPTS = 5;
+
     const eligible = arr
-      .map(x => ({...x, cp: pct(x.cm, x.ca)}))
-      .filter(x => x.cp !== null && x.ca >= MIN_ATTEMPTS)
-      .sort((a,b) => b.cp - a.cp);
+      .map(x => ({ player: x.player, cp: pct(x.cm, x.ca), att: x.ca }))
+      .filter(x => x.cp !== null && x.att >= MIN_ATTEMPTS)
+      .sort((a,b) => b.cp - a.cp)
+      .slice(0, 3);
 
-    if (!eligible.length){
-      return `
-        <div class="panel">
-          <h3>✅ Best Checkout % (League)</h3>
-          <div class="muted">Not enough checkout data yet.</div>
-        </div>
-      `;
-    }
+    const lis = eligible.map((x,i) => `
+      <li>
+        <span>${i+1}. ${esc(x.player)}</span>
+        <span class="badge">${esc(fmtPct(x.cp))}</span>
+      </li>
+    `).join("");
 
-    const best = eligible[0];
     return `
       <div class="panel">
         <h3>✅ Best Checkout % (League)</h3>
         <ul class="ranklist">
-          <li><span>${makePlayerClickable(best.player)}</span><span class="badge">${esc(fmtPct(best.cp))}</span></li>
+          ${lis || `<li><span class="muted">Not enough checkout data yet</span><span></span></li>`}
         </ul>
         <div class="muted" style="margin-top:8px;">Min attempts: ${MIN_ATTEMPTS}</div>
       </div>
@@ -635,12 +643,12 @@ function renderLeagueHighlights(statEntryRows){
   };
 
   const html =
-    topOne("Most 180s (League)", "💥", x=>x.s180) +
-    topOne("Most 140+ (League)", "🔥", x=>x.s140) +
-    topOne("Most 100+ (League)", "🎯", x=>x.s100) +
-    topOne("Best Checkout (League)", "🏆", x=>x.hf) +
+    topN("Most 180s (League)", "💥", x=>x.s180) +
+    topN("Most 140+ (League)", "🔥", x=>x.s140) +
+    topN("Most 100+ (League)", "🎯", x=>x.s100) +
+    topN("Best Checkout (League)", "🏆", x=>x.hf) +
     checkoutPanel() +
-    topOne("Best Leg (Lowest, League)", "⚡", x=>x.bl, v => (v==null? "—": v), "asc");
+    topN("Best Leg (Lowest, League)", "⚡", x=>x.bl, v => (v==null? "—": v), "asc");
 
   document.getElementById("highlights").innerHTML = html;
 }
@@ -653,7 +661,6 @@ let STAT_ENTRY_CACHE = null;
 /** Current Form + record from Results **/
 function buildCurrentForm(playerName, maxGames = 5){
   if (!RESULTS_CACHE) return [];
-
   const pn = normName(playerName);
 
   const H_HOME   = ["Home Player","Home"];
@@ -701,7 +708,6 @@ function buildCurrentForm(playerName, maxGames = 5){
 
 function computeRecordFromResults(playerName){
   if (!RESULTS_CACHE) return {matches:0,wins:0,draws:0,losses:0, legsWon:null, legsLost:null};
-
   const pn = normName(playerName);
 
   const H_HOME   = ["Home Player","Home"];
@@ -710,7 +716,6 @@ function computeRecordFromResults(playerName){
   const H_LOSER  = ["Loser"];
   const H_DRAW   = ["Draw?","Draw"];
 
-  // optional legs columns (if your Results sheet has them)
   const H_HOME_LEGS = ["Home Legs","Home Leg","Home Score","Home Legs Won","Home Legs (Won)"];
   const H_AWAY_LEGS = ["Away Legs","Away Leg","Away Score","Away Legs Won","Away Legs (Won)"];
 
@@ -740,7 +745,7 @@ function computeRecordFromResults(playerName){
     const homeLegs = num(hl);
     const awayLegs = num(al);
 
-    if (Number.isFinite(homeLegs) && Number.isFinite(awayLegs) && (String(hl).trim() !== "" || String(al).trim() !== "")){
+    if ((String(hl).trim() !== "" || String(al).trim() !== "") && Number.isFinite(homeLegs) && Number.isFinite(awayLegs)){
       legsAvailable = true;
       if (normName(home) === pn){
         legsWon  += homeLegs;
@@ -759,13 +764,11 @@ function computeRecordFromResults(playerName){
   };
 }
 
-/** Checkout % from Stat Entry **/
 function checkoutPctFromStatEntry(playerName){
   if (!STAT_ENTRY_CACHE) return null;
-
   const pn = normName(playerName);
-  let made = 0, att = 0;
 
+  let made = 0, att = 0;
   for (const o of STAT_ENTRY_CACHE){
     const p = String(getAny(o, ["Player"]) || "").trim();
     if (normName(p) !== pn) continue;
@@ -776,7 +779,6 @@ function checkoutPctFromStatEntry(playerName){
   return pct(made, att);
 }
 
-/** Build fallback scoring + records from Stat Entry **/
 function buildFallbackFromStatEntry(playerName){
   if (!STAT_ENTRY_CACHE) return null;
   const pn = normName(playerName);
@@ -784,11 +786,13 @@ function buildFallbackFromStatEntry(playerName){
   let s60=0,s80=0,s100=0,s140=0,s180=0;
   let highestFinish = 0;
   let bestLeg = null;
+  let foundAny = false;
 
   for (const o of STAT_ENTRY_CACHE){
     const p = String(getAny(o, ["Player"]) || "").trim();
     if (normName(p) !== pn) continue;
 
+    foundAny = true;
     s60  += num(getAny(o, ["60+","60 +"]));
     s80  += num(getAny(o, ["80+","80 +"]));
     s100 += num(getAny(o, ["100+","100 +"]));
@@ -801,10 +805,7 @@ function buildFallbackFromStatEntry(playerName){
     if (bl > 0) bestLeg = (bestLeg === null) ? bl : Math.min(bestLeg, bl);
   }
 
-  // if player has no stat entry rows, return null
-  if (s60+s80+s100+s140+s180 === 0 && highestFinish === 0 && bestLeg === null && checkoutPctFromStatEntry(playerName) === null){
-    return null;
-  }
+  if (!foundAny) return null;
 
   return {
     s60,s80,s100,s140,s180,
@@ -841,16 +842,13 @@ function openModal(playerName){
   const form = renderFormPills(buildCurrentForm(playerName, 5));
   const recFromRes = computeRecordFromResults(playerName);
 
-  // Try Player Stats first (richest data)
   let p = null;
   if (PLAYER_STATS_CACHE){
     p = PLAYER_STATS_CACHE.find(x => samePlayer(x["Player"] || "", playerName)) || null;
   }
 
-  // Fallback from Stat Entry if Player Stats row missing
   const fb = buildFallbackFromStatEntry(playerName);
 
-  // If we have neither Player Stats nor any fallback data, show a helpful message
   if (!p && !fb && (!recFromRes.matches || recFromRes.matches === 0)){
     bodyEl.innerHTML = `
       <div class="error">
@@ -860,10 +858,8 @@ function openModal(playerName){
     return;
   }
 
-  // helpers for Player Stats values when available
   const v = (k)=> p ? (p[k] ?? "") : "";
 
-  // Record fields: prefer Player Stats if present, else use Results-derived record
   const matches = p ? (v("Matches") || recFromRes.matches) : recFromRes.matches;
   const wins    = p ? (v("Wins") || recFromRes.wins) : recFromRes.wins;
   const draws   = p ? (v("Draws") || recFromRes.draws) : recFromRes.draws;
@@ -872,20 +868,14 @@ function openModal(playerName){
   const legsWon  = p ? (v("Legs Won")  || (recFromRes.legsWon  ?? "—")) : (recFromRes.legsWon  ?? "—");
   const legsLost = p ? (v("Legs Lost") || (recFromRes.legsLost ?? "—")) : (recFromRes.legsLost ?? "—");
 
-  // Scoring totals: prefer Player Stats if present, else fallback from Stat Entry
-  const s60  = p ? v("60+")  : (fb ? fb.s60  : "");
-  const s80  = p ? v("80+")  : (fb ? fb.s80  : "");
-  const s100 = p ? v("100+") : (fb ? fb.s100 : "");
-  const s140 = p ? v("140+") : (fb ? fb.s140 : "");
-  const s180 = p ? v("180")  : (fb ? fb.s180 : "");
+  const s60  = p ? v("60+")  : (fb ? fb.s60  : 0);
+  const s80  = p ? v("80+")  : (fb ? fb.s80  : 0);
+  const s100 = p ? v("100+") : (fb ? fb.s100 : 0);
+  const s140 = p ? v("140+") : (fb ? fb.s140 : 0);
+  const s180 = p ? v("180")  : (fb ? fb.s180 : 0);
 
-  // Records: prefer Player Stats if present, else fallback from Stat Entry
   const highestFinish = p ? (v("Highest Finish") || "—") : (fb && fb.highestFinish ? fb.highestFinish : "—");
   const bestLeg       = p ? (v("Best Leg") || "—")       : (fb && fb.bestLeg ? fb.bestLeg : "—");
-
-  const sourceNote = p
-    ? `<div class="muted" style="margin-top:10px;">Profile source: Player Stats + Results + Stat Entry</div>`
-    : `<div class="muted" style="margin-top:10px;">Profile source: Results + Stat Entry (Player Stats row not found)</div>`;
 
   const html = `
     <div class="profile-grid">
@@ -901,11 +891,11 @@ function openModal(playerName){
       <div class="kpi">
         <h4>Scoring (Totals)</h4>
         <div class="rows">
-          <div class="row"><span>60+</span><span>${esc(s60 || 0)}</span></div>
-          <div class="row"><span>80+</span><span>${esc(s80 || 0)}</span></div>
-          <div class="row"><span>100+</span><span>${esc(s100 || 0)}</span></div>
-          <div class="row"><span>140+</span><span>${esc(s140 || 0)}</span></div>
-          <div class="row"><span>180</span><span>${esc(s180 || 0)}</span></div>
+          <div class="row"><span>60+</span><span>${esc(s60)}</span></div>
+          <div class="row"><span>80+</span><span>${esc(s80)}</span></div>
+          <div class="row"><span>100+</span><span>${esc(s100)}</span></div>
+          <div class="row"><span>140+</span><span>${esc(s140)}</span></div>
+          <div class="row"><span>180</span><span>${esc(s180)}</span></div>
         </div>
       </div>
 
@@ -928,7 +918,6 @@ function openModal(playerName){
         </div>
       </div>
     </div>
-    ${sourceNote}
   `;
 
   bodyEl.innerHTML = html;
@@ -958,27 +947,25 @@ document.addEventListener("click", (e) => {
 /** Load all **/
 async function loadAll(){
   const leagueCSV = await fetch(csvUrl(LEAGUE_GID), {cache:"no-store"}).then(r => r.text());
-  renderTable(parseCSV(leagueCSV), "league", ["player"]);
+  renderTable(parseCSV(leagueCSV), "league", ["player"]); // ✅ clickable
 
   const avgCSV = await fetch(csvUrl(AVERAGES_GID), {cache:"no-store"}).then(r => r.text());
   const avgRows = parseCSV(avgCSV);
-  const avgHeaders = avgRows[0].map(h => String(h||"").trim().toLowerCase());
-  const firstHeader = avgHeaders[0] || "player";
-  renderTable(avgRows, "averages", [firstHeader]);
+  renderTable(avgRows, "averages", []); // ❌ NOT clickable (Option A)
 
   const fixCSV = await fetch(csvUrl(FIXTURES_GID), {cache:"no-store"}).then(r => r.text());
-  renderFixtures(parseCSV(fixCSV));
+  renderFixtures(parseCSV(fixCSV)); // ✅ clickable home/away
 
   const psCSV = await fetch(csvUrl(PLAYER_STATS_GID), {cache:"no-store"}).then(r => r.text());
   const psRows = parseCSV(psCSV);
   PLAYER_STATS_CACHE = rowsToObjects(psRows);
 
-  renderRecords(PLAYER_STATS_CACHE);
+  renderRecords(PLAYER_STATS_CACHE); // ❌ names not clickable
 
   const seCSV = await fetch(csvUrl(STAT_ENTRY_GID), {cache:"no-store"}).then(r => r.text());
   const seRows = parseCSV(seCSV);
   STAT_ENTRY_CACHE = rowsToObjects(seRows);
-  renderLeagueHighlights(seRows);
+  renderLeagueHighlights(seRows); // ❌ names not clickable, top 3
 
   const resCSV = await fetch(csvUrl(RESULTS_GID), {cache:"no-store"}).then(r => r.text());
   const resRows = parseCSV(resCSV);
