@@ -107,21 +107,32 @@ td:first-child, th:first-child{
 
 @media (max-width: 600px){
 
-  #league th:first-child,
-  #league td:first-child{
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    width: 42%;
-    line-height: 1.25;
+  /* League table: no truncation, allow scroll */
+  #league{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
-  #league th:not(:first-child),
-  #league td:not(:first-child){
-    width: 7%;
+  #league table{
+    min-width: 900px;   /* ensures all columns fit naturally */
+    table-layout: auto;
+  }
+
+  #league th,
+  #league td{
+    white-space: nowrap;   /* no wrapping, no ellipsis */
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* Keep player names readable */
+  #league th:first-child,
+  #league td:first-child{
+    min-width: 180px;
     white-space: nowrap;
   }
 }
+
 
   
 /* Keep score on one line */
