@@ -55,6 +55,18 @@ h1{ margin:0 0 6px; font-size: 28px; }
 
 .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 900px){ .grid2{ grid-template-columns: 1fr; } }
+  
+  @media (max-width: 900px){
+  .grid2 > .section{
+    width: 100%;
+    max-width: 1050px;
+    justify-self: stretch;
+  }
+}
+#records{
+  grid-column: 1 / -1;
+}
+
 
 table{
   width:100%;
