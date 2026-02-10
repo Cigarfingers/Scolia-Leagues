@@ -38,12 +38,10 @@ h1{ margin:0 0 6px; font-size: 28px; }
   margin-bottom: 22px;
   box-shadow: 0 20px 50px rgba(0,0,0,.4);
 
-  /* Force all sections to same width */
-  width: 100%;
-  max-width: 1050px;
-  margin-left: auto;
-  margin-right: auto;
+  /* critical for grid + tables */
+  min-width: 0;
 }
+
   
 /* Ensure records card also spans full width */
 #records{
@@ -56,13 +54,7 @@ h1{ margin:0 0 6px; font-size: 28px; }
 .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 900px){ .grid2{ grid-template-columns: 1fr; } }
   
-  @media (max-width: 900px){
-  .grid2 > .section{
-    width: 100%;
-    max-width: 1050px;
-    justify-self: stretch;
-  }
-}
+
 #records{
   grid-column: 1 / -1;
 }
