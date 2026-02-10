@@ -1346,52 +1346,68 @@ async function loadAll(){
     STAT_ENTRY_GID
   } = cfg.gids;
 
+  // ✅ Fetch everything in parallel (big speed-up)
+  const [
+    leagueCSV,
+    avgCSV,
+    fixCSV,
+    psCSV,
+    seCSV,
+    resCSV
+  ] = await Promise.all([
+    safeFetchCSV(LEAGUE_GID),
+    safeFetchCSV(AVERAGES_GID),
+    safeFetchCSV(FIXTURES_GID),
+    safeFetchCSV(PLAYER_STATS_GID),
+    safeFetchCSV(STAT_ENTRY_GID),
+    safeFetchCSV(RESULTS_GID),
+  ]);
+
   // League table (clickable player column)
-  const leagueCSV = await safeFetchCSV(LEAGUE_GID);
   if (!leagueCSV){
-    document.getElementById("league").innerHTML = `<div class="error">Missing GID for ${esc(cfg.name)} League Table. Replace the REPLACE_ME values.</div>`;
+    document.getElementById("league").innerHTML =
+      `<div class="error">Missing GID for ${esc(cfg.name)} League Table. Replace the REPLACE_ME values.</div>`;
   } else {
     renderTable(parseCSV(leagueCSV), "league", ["player"]);
   }
 
   // Averages (not clickable)
-  const avgCSV = await safeFetchCSV(AVERAGES_GID);
   if (!avgCSV){
-    document.getElementById("averages").innerHTML = `<div class="error">Missing GID for ${esc(cfg.name)} Averages.</div>`;
+    document.getElementById("averages").innerHTML =
+      `<div class="error">Missing GID for ${esc(cfg.name)} Averages.</div>`;
   } else {
     renderTable(parseCSV(avgCSV), "averages", []);
   }
 
   // Fixtures (NOT clickable)
-  const fixCSV = await safeFetchCSV(FIXTURES_GID);
   if (!fixCSV){
-    document.getElementById("fixtures").innerHTML = `<div class="error">Missing GID for ${esc(cfg.name)} Fixtures.</div>`;
+    document.getElementById("fixtures").innerHTML =
+      `<div class="error">Missing GID for ${esc(cfg.name)} Fixtures.</div>`;
   } else {
     renderFixtures(parseCSV(fixCSV));
   }
 
   // Player stats cache (used by modal + records + form guide)
-  const psCSV = await safeFetchCSV(PLAYER_STATS_GID);
   if (psCSV){
     const psRows = parseCSV(psCSV);
     PLAYER_STATS_CACHE = rowsToObjects(psRows);
     renderRecords(PLAYER_STATS_CACHE);
   } else {
-    document.getElementById("records").innerHTML = `<div class="error">Missing GID for ${esc(cfg.name)} Player Stats.</div>`;
+    document.getElementById("records").innerHTML =
+      `<div class="error">Missing GID for ${esc(cfg.name)} Player Stats.</div>`;
   }
 
   // Stat entry cache (used by highlights + checkout %)
-  const seCSV = await safeFetchCSV(STAT_ENTRY_GID);
   if (seCSV){
     const seRows = parseCSV(seCSV);
     STAT_ENTRY_CACHE = rowsToObjects(seRows);
     renderLeagueHighlights(seRows);
   } else {
-    document.getElementById("highlights").innerHTML = `<div class="error">Missing GID for ${esc(cfg.name)} Stat Entry.</div>`;
+    document.getElementById("highlights").innerHTML =
+      `<div class="error">Missing GID for ${esc(cfg.name)} Stat Entry.</div>`;
   }
 
   // Results cache (used by recent results + modal record + form guide)
-  const resCSV = await safeFetchCSV(RESULTS_GID);
   if (resCSV){
     const resRows = parseCSV(resCSV);
     RESULTS_CACHE = rowsToObjects(resRows);
@@ -1404,10 +1420,13 @@ async function loadAll(){
     // Form guide
     renderFormGuide();
   } else {
-    document.getElementById("recentResults").innerHTML = `<div class="error">Missing GID for ${esc(cfg.name)} Results.</div>`;
-    document.getElementById("formGuide").innerHTML = `<div class="error">Missing GID for ${esc(cfg.name)} Results (needed for form).</div>`;
+    document.getElementById("recentResults").innerHTML =
+      `<div class="error">Missing GID for ${esc(cfg.name)} Results.</div>`;
+    document.getElementById("formGuide").innerHTML =
+      `<div class="error">Missing GID for ${esc(cfg.name)} Results (needed for form).</div>`;
   }
 }
+
 
 /** Top league selector wiring **/
 const topSel = document.getElementById("topLeagueSelect");
