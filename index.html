@@ -77,27 +77,38 @@ td:first-child, th:first-child{
    Mobile table alignment fix
    ========================= */
 
-/* Allow tables to scroll horizontally on mobile instead of squashing */
-#league, #averages, #formGuide, #recentResults, #fixtures{
+@media (max-width: 600px){
+  table{
+    table-layout: fixed;
+  }
+
+  th, td{
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+
+/* Only genuinely wide tables scroll */
+#recentResults,
+#fixtures{
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Keep column widths consistent */
-#league table,
-#averages table,
-#formGuide table,
 #recentResults table,
 #fixtures table{
-  min-width: 720px;
+  min-width: 760px;
 }
 
-/* Prevent score wrapping (2 - 6 staying on one line) */
+/* Keep score on one line */
 .score{
   white-space: nowrap;
   display: inline-block;
   min-width: 52px;
 }
+
 
 .pill{
   display:inline-flex;
