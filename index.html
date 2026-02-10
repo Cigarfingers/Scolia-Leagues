@@ -101,7 +101,29 @@ td:first-child, th:first-child{
 #fixtures table{
   min-width: 760px;
 }
+/* =========================
+   League table – mobile override (Option A)
+   ========================= */
 
+@media (max-width: 600px){
+
+  #league th:first-child,
+  #league td:first-child{
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    width: 42%;
+    line-height: 1.25;
+  }
+
+  #league th:not(:first-child),
+  #league td:not(:first-child){
+    width: 7%;
+    white-space: nowrap;
+  }
+}
+
+  
 /* Keep score on one line */
 .score{
   white-space: nowrap;
