@@ -831,8 +831,9 @@ function renderFixtures(rows){
     return;
   }
 
-  // Store only released weeks for cross-week search
-  _allFixtureData = data.filter(d => ["yes","true","y","1"].includes(d.released));
+  // Store all rows belonging to released weeks (not just the single row with the Yes flag)
+  const releasedWeekSet = new Set(releasedWeeks);
+  _allFixtureData = data.filter(d => releasedWeekSet.has(d.match));
 
   select.innerHTML = releasedWeeks.map(w => `<option value="${esc(w)}">Match ${esc(w)}</option>`).join("");
 
