@@ -374,6 +374,72 @@ button:hover{ background:#101a33; }
   font-weight: 700;
   letter-spacing: .02em;
 }
+
+/* ========================
+   Player search input
+   ======================== */
+.player-search-wrap{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+#fixturePlayerSearch{
+  background: #0b1220;
+  color: #e5e7eb;
+  border: 1px solid #263554;
+  border-radius: 12px;
+  padding: 8px 32px 8px 12px;
+  cursor: text;
+  font-size: 14px;
+  width: 180px;
+  outline: none;
+  transition: border-color .2s, width .2s;
+}
+
+#fixturePlayerSearch:focus{
+  border-color: #4f6aaa;
+  width: 220px;
+}
+
+#fixturePlayerSearch::placeholder{
+  opacity: .5;
+}
+
+.search-clear-btn{
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #e5e7eb;
+  opacity: .5;
+  padding: 0;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: none;
+  line-height: 1;
+}
+
+.search-clear-btn:hover{
+  opacity: 1;
+  background: none;
+}
+
+#fixturePlayerSearch:not(:placeholder-shown) ~ .search-clear-btn{
+  display: block;
+}
+
+/* Highlight matched player name cells */
+.fixture-match td.player-highlight{
+  color: #c7d2fe;
+  font-weight: 600;
+}
+
+/* Dim non-matching rows when search is active */
+.fixture-dimmed{
+  opacity: .35;
+}
 </style>
 
 <!-- GoatCounter Analytics -->
@@ -454,11 +520,24 @@ button:hover{ background:#101a33; }
   <h2>🗓️ Fixtures</h2>
 
   <div class="toolbar">
-    <div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
       <select id="weekSelect"></select>
       <span class="muted" id="weekSummary"></span>
     </div>
-    <button id="refreshBtn">Refresh</button>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <!-- ✅ NEW: Player name search -->
+      <div class="player-search-wrap">
+        <input
+          type="text"
+          id="fixturePlayerSearch"
+          placeholder="Search player…"
+          autocomplete="off"
+          aria-label="Filter fixtures by player name"
+        >
+        <button class="search-clear-btn" id="fixtureSearchClear" title="Clear search" tabindex="-1">✕</button>
+      </div>
+      <button id="refreshBtn">Refresh</button>
+    </div>
   </div>
 
   <div id="fixtures">Loading…</div>
@@ -627,6 +706,70 @@ function renderTable(rows, elId, clickableHeaderNamesLower = []){
   html += `</tbody></table>`;
   document.getElementById(elId).innerHTML = html;
 }
+
+/** ========================
+ * Fixture player search
+ * ======================== */
+let _fixtureSearchTerm = "";
+
+function applyFixtureSearch(){
+  const term = _fixtureSearchTerm.trim().toLowerCase();
+  const container = document.getElementById("fixtures");
+  if (!container) return;
+
+  const rows = container.querySelectorAll("tbody tr");
+  if (!rows.length) return;
+
+  rows.forEach(tr => {
+    // columns: Match(0), Home(1), Away(2), Status(3)
+    const homeTd = tr.cells[1];
+    const awayTd = tr.cells[2];
+    if (!homeTd || !awayTd) return;
+
+    const homeText = (homeTd.textContent || "").toLowerCase();
+    const awayText = (awayTd.textContent || "").toLowerCase();
+
+    if (!term){
+      // no filter – show all, remove highlights
+      tr.classList.remove("fixture-dimmed", "fixture-match");
+      homeTd.classList.remove("player-highlight");
+      awayTd.classList.remove("player-highlight");
+      return;
+    }
+
+    const homeMatch = homeText.includes(term);
+    const awayMatch = awayText.includes(term);
+
+    if (homeMatch || awayMatch){
+      tr.classList.remove("fixture-dimmed");
+      tr.classList.add("fixture-match");
+      homeTd.classList.toggle("player-highlight", homeMatch);
+      awayTd.classList.toggle("player-highlight", awayMatch);
+    } else {
+      tr.classList.add("fixture-dimmed");
+      tr.classList.remove("fixture-match");
+      homeTd.classList.remove("player-highlight");
+      awayTd.classList.remove("player-highlight");
+    }
+  });
+}
+
+// Wire up search input
+const fixtureSearchInput = document.getElementById("fixturePlayerSearch");
+const fixtureSearchClear = document.getElementById("fixtureSearchClear");
+
+fixtureSearchInput.addEventListener("input", () => {
+  _fixtureSearchTerm = fixtureSearchInput.value;
+  applyFixtureSearch();
+});
+
+fixtureSearchClear.addEventListener("click", () => {
+  fixtureSearchInput.value = "";
+  _fixtureSearchTerm = "";
+  applyFixtureSearch();
+  fixtureSearchInput.focus();
+});
+
 function renderFixtures(rows){
   const headers = rows[0].map(h => String(h || "").trim());
   const colExact = (name) => headers.findIndex(h => h.toLowerCase() === name);
@@ -684,6 +827,9 @@ function renderFixtures(rows){
 
     html += `</tbody></table>`;
     document.getElementById("fixtures").innerHTML = html;
+
+    // Re-apply any active player search after re-drawing the table
+    applyFixtureSearch();
   }
 
   select.onchange = draw;
@@ -731,7 +877,7 @@ function normName(s){
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/[’]/g, "'");
+    .replace(/[']/g, "'");
 }
 function samePlayer(a, b){
   return normName(a) === normName(b);
@@ -1025,7 +1171,7 @@ function checkoutPctFromStatEntry(playerName){
   return pct(made, att);
 }
 
-/** Player stats fallback (when Player Stats sheet doesn’t contain totals) **/
+/** Player stats fallback (when Player Stats sheet doesn't contain totals) **/
 function buildFallbackFromStatEntry(playerName){
   if (!STAT_ENTRY_CACHE) return null;
   const pn = normName(playerName);
@@ -1381,6 +1527,10 @@ function resetUIForLoad(){
   document.getElementById("recentResultsMeta").textContent = "Loading…";
   document.getElementById("fixtures").innerHTML = "Loading…";
   document.getElementById("weekSummary").textContent = "";
+
+  // Reset player search on league change
+  fixtureSearchInput.value = "";
+  _fixtureSearchTerm = "";
 }
 
 function resetCaches(){
@@ -1538,4 +1688,3 @@ loadAll();
 
 </body>
 </html>
-
